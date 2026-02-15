@@ -44,11 +44,19 @@ export const SPRITE_MAP: Record<ArchetypeId, Record<EvolutionStage, { happy: str
       sad: '/images/spore-maw-full-sad.png',
     },
   },
-  // Placeholder for other archetypes (no sprites yet)
   'Scrap-Eye': {
-    baby: { happy: '', sad: '' },
-    adult: { happy: '', sad: '' },
-    full: { happy: '', sad: '' },
+    baby: {
+      happy: '/images/scrap-eye-baby-happy.png',
+      sad: '/images/scrap-eye-baby-sad.png',
+    },
+    adult: {
+      happy: '/images/scrap-eye-adult-happy.png',
+      sad: '/images/scrap-eye-adult-sad.png',
+    },
+    full: {
+      happy: '/images/scrap-eye-full-happy.png',
+      sad: '/images/scrap-eye-full-sad.png',
+    },
   },
   'Prism-Core': {
     baby: { happy: '', sad: '' },
