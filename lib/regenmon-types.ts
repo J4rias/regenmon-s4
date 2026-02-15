@@ -39,6 +39,7 @@ export interface ChatMessage {
   content: string
   timestamp: string
   memoryIndex?: number
+  isRecall?: boolean
 }
 
 // Sprite image map: archetypeId -> stage -> mood -> image path

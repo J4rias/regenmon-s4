@@ -51,6 +51,7 @@ const strings = {
     openChat: 'Open Chat',
     closeChat: 'Close Chat',
     memorySaved: 'Memory saved',
+    memoryRecalled: 'Memory recalled',
   },
   es: {
     title: 'Regenmon',
@@ -100,6 +101,7 @@ const strings = {
     openChat: 'Abrir Chat',
     closeChat: 'Cerrar Chat',
     memorySaved: 'Memoria guardada',
+    memoryRecalled: 'Memoria recordada',
   },
 } as const
 

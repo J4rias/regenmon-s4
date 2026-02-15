@@ -69,6 +69,7 @@ export function Dashboard({ locale, data, onUpdate, onReset }: DashboardProps) {
   const [showSpriteBubble, setShowSpriteBubble] = useState(false)
   const [spriteBubbleText, setSpriteBubbleText] = useState('')
   const [spriteBubbleMemory, setSpriteBubbleMemory] = useState<number | null>(null)
+  const [spriteBubbleIsRecall, setSpriteBubbleIsRecall] = useState(false)
   const [isRegenmonTyping, setIsRegenmonTyping] = useState(false)
   const [cooldowns, setCooldowns] = useState<Record<string, boolean>>({
     hunger: false,
@@ -126,6 +127,8 @@ export function Dashboard({ locale, data, onUpdate, onReset }: DashboardProps) {
       // If we are typing, show '...' (via UI logic) and clear text
       if (!showSpriteBubble) setShowSpriteBubble(true)
       if (spriteBubbleText) setSpriteBubbleText('')
+      if (spriteBubbleMemory) setSpriteBubbleMemory(null)
+      if (spriteBubbleIsRecall) setSpriteBubbleIsRecall(false)
       if (bubbleTimerRef.current) {
         clearTimeout(bubbleTimerRef.current)
         bubbleTimerRef.current = null
@@ -135,6 +138,7 @@ export function Dashboard({ locale, data, onUpdate, onReset }: DashboardProps) {
       setLastShownMessageId(lastAssistantMessage.id)
       setSpriteBubbleText(lastAssistantMessage.content)
       setSpriteBubbleMemory(lastAssistantMessage.memoryIndex || null)
+      setSpriteBubbleIsRecall(!!lastAssistantMessage.isRecall)
       setShowSpriteBubble(true)
 
       // Start 5 second timer to hide
@@ -143,6 +147,7 @@ export function Dashboard({ locale, data, onUpdate, onReset }: DashboardProps) {
         setShowSpriteBubble(false)
         setSpriteBubbleText('')
         setSpriteBubbleMemory(null)
+        setSpriteBubbleIsRecall(false)
         bubbleTimerRef.current = null
       }, 5000)
     } else if (!isRegenmonTyping && !bubbleTimerRef.current && showSpriteBubble && !spriteBubbleText) {
@@ -438,7 +443,7 @@ export function Dashboard({ locale, data, onUpdate, onReset }: DashboardProps) {
                           <div
                             className="absolute -bottom-2 -right-2 bg-yellow-400 text-black px-1.5 py-0.5 rounded border border-black text-[10px] font-bold flex items-center gap-1 shadow-sm"
                             style={{ zIndex: 1 }}
-                            title={s.memorySaved}
+                            title={spriteBubbleIsRecall ? s.memoryRecalled : s.memorySaved}
                           >
                             🧠 {spriteBubbleMemory}
                           </div>
@@ -545,7 +550,7 @@ export function Dashboard({ locale, data, onUpdate, onReset }: DashboardProps) {
             zIndex: 999,
             boxShadow: '0 8px 24px rgba(0, 0, 0, 0.4)',
             borderRadius: '8px',
-            overflow: 'hidden',
+            overflow: 'visible',
             opacity: isChatOpen ? 1 : 0,
             pointerEvents: isChatOpen ? 'auto' : 'none',
             visibility: isChatOpen ? 'visible' : 'hidden',
