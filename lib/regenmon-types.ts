@@ -28,6 +28,16 @@ export interface RegenmonData {
   stats: RegenmonStats
   createdAt: string
   evolutionBonus?: number // accumulated time bonus/penalty in ms
+  gameOverAt?: string // timestamp when game over occurred
+  chatHistory?: ChatMessage[]
+  memories?: string[]
+}
+
+export interface ChatMessage {
+  id: string
+  role: 'user' | 'assistant'
+  content: string
+  timestamp: string
 }
 
 // Sprite image map: archetypeId -> stage -> mood -> image path

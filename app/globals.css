@@ -265,3 +265,9 @@
 .animate-shake {
   animation: shake 0.4s ease-out;
 }
+
+/* Chat scrollbar */
+.custom-scrollbar::-webkit-scrollbar { width: 10px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: var(--card); border-left: 2px solid var(--border); }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: var(--primary); border: 2px solid var(--card); }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: var(--secondary-foreground); }

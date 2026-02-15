@@ -12,6 +12,7 @@ import {
 } from '@/lib/regenmon-types'
 import type { Locale } from '@/lib/i18n'
 import { t } from '@/lib/i18n'
+import { ChatBox } from '@/components/chat-box'
 
 interface DashboardProps {
   locale: Locale
@@ -20,8 +21,9 @@ interface DashboardProps {
   onReset: () => void
 }
 
-function getEvolutionStage(createdAt: string, bonus: number = 0): { stage: EvolutionStage; stageIndex: number; timeRemaining: number } {
-  const elapsed = Date.now() - new Date(createdAt).getTime() + bonus
+function getEvolutionStage(createdAt: string, bonus: number = 0, gameOverAt?: string): { stage: EvolutionStage; stageIndex: number; timeRemaining: number } {
+  const endTime = gameOverAt ? new Date(gameOverAt).getTime() : Date.now()
+  const elapsed = endTime - new Date(createdAt).getTime() + bonus
   const effectiveElapsed = Math.max(0, elapsed)
   const stageIndex = Math.min(Math.floor(effectiveElapsed / EVOLUTION_INTERVAL_MS), EVOLUTION_STAGES.length - 1)
   const stage = EVOLUTION_STAGES[stageIndex]
@@ -113,14 +115,19 @@ export function Dashboard({ locale, data, onUpdate, onReset }: DashboardProps) {
           }, 1200)
         }
         const allZero = newStats.happiness <= 0 && newStats.energy <= 0 && newStats.hunger <= 0
-        onUpdate({ ...current, stats: newStats, evolutionBonus: newBonus })
+        let gameOverAt = current.gameOverAt
+        if (allZero && !gameOverAt) {
+          gameOverAt = new Date().toISOString()
+        }
+
+        onUpdate({ ...current, stats: newStats, evolutionBonus: newBonus, gameOverAt })
         if (allZero) clearInterval(drain)
       }
     }, 5000)
     return () => clearInterval(drain)
   }, [onUpdate])
 
-  const { stage, stageIndex, timeRemaining } = getEvolutionStage(data.createdAt, data.evolutionBonus ?? 0)
+  const { stage, stageIndex, timeRemaining } = getEvolutionStage(data.createdAt, data.evolutionBonus ?? 0, data.gameOverAt)
   const mood = getMood(data.stats)
   const isGameOver = data.stats.happiness <= 0 && data.stats.energy <= 0 && data.stats.hunger <= 0
   const sprites = SPRITE_MAP[data.type]
@@ -467,6 +474,9 @@ export function Dashboard({ locale, data, onUpdate, onReset }: DashboardProps) {
           </div>
         </div>
       </div>
+
+      {/* Chat Box */}
+      <ChatBox data={data} locale={locale} onUpdate={onUpdate} isGameOver={isGameOver} />
     </div>
   )
 }
