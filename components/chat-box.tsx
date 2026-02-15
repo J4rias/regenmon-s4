@@ -11,9 +11,10 @@ interface ChatBoxProps {
     onUpdate: (data: RegenmonData) => void
     isGameOver?: boolean
     isOpen: boolean
+    onTypingChange?: (isTyping: boolean) => void
 }
 
-export function ChatBox({ data, locale, onUpdate, isGameOver, isOpen }: ChatBoxProps) {
+export function ChatBox({ data, locale, onUpdate, isGameOver, isOpen, onTypingChange }: ChatBoxProps) {
     const [inputValue, setInputValue] = useState('')
     const [messages, setMessages] = useState<ChatMessage[]>(data.chatHistory || [])
     const [memories, setMemories] = useState<string[]>(data.memories || [])
@@ -26,6 +27,11 @@ export function ChatBox({ data, locale, onUpdate, isGameOver, isOpen }: ChatBoxP
     useEffect(() => {
         if (isOpen) setSessionCount(0)
     }, [isOpen])
+
+    // Notify parent when typing state changes
+    useEffect(() => {
+        onTypingChange?.(isTyping)
+    }, [isTyping, onTypingChange])
 
     // Auto-scroll internal container only (avoids page scroll)
     useEffect(() => {
@@ -240,35 +246,21 @@ export function ChatBox({ data, locale, onUpdate, isGameOver, isOpen }: ChatBoxP
 
     return (
         <div
-            className="nes-container is-rounded w-full mt-4"
+            className="nes-container is-rounded w-full"
             style={{
-                height: '400px',
+                height: '100%',
                 display: 'flex',
                 flexDirection: 'column',
                 backgroundColor: 'var(--card)',
-                color: 'var(--foreground)'
+                color: 'var(--foreground)',
+                padding: '12px'
             }}
         >
-            {/* Header with Memory Indicator */}
-            <div className="flex justify-between items-center mb-4 border-b-2 border-border pb-2">
-                <h3 className="text-sm font-bold">Chat with {data.name}</h3>
-                {/* Typing simulator checkbox (for debugging/demo) */}
-                <label className="nes-checkbox-label">
-                    <input
-                        type="checkbox"
-                        className="nes-checkbox"
-                        checked={isTyping}
-                        onChange={(e) => setIsTyping(e.target.checked)}
-                    />
-                    <span className="text-xs">Typing</span>
-                </label>
-            </div>
-
             {/* Messages Area */}
             <div
                 ref={chatContainerRef}
                 className="flex flex-col gap-3 overflow-y-auto mb-4 p-2 custom-scrollbar"
-                style={{ height: '300px', backgroundColor: 'var(--background)' }}
+                style={{ flex: 1, backgroundColor: 'var(--background)', borderRadius: '4px' }}
             >
                 {messages.length === 0 && (
                     <p className="text-center text-xs text-muted-foreground mt-10 opacity-50">

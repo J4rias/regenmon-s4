@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Image from 'next/image'
+import { MessageCircle } from 'lucide-react'
 import {
   ARCHETYPES,
   SPRITE_MAP,
@@ -62,6 +63,12 @@ interface FloatingText {
 export function Dashboard({ locale, data, onUpdate, onReset }: DashboardProps) {
   const [now, setNow] = useState(Date.now())
   const [poppedStat, setPoppedStat] = useState<string | null>(null)
+  const [isChatOpen, setIsChatOpen] = useState(false)
+  const [lastReadMessageCount, setLastReadMessageCount] = useState(data.chatHistory?.length || 0)
+  const [lastShownMessageId, setLastShownMessageId] = useState<string | null>(null)
+  const [showSpriteBubble, setShowSpriteBubble] = useState(false)
+  const [spriteBubbleText, setSpriteBubbleText] = useState('')
+  const [isRegenmonTyping, setIsRegenmonTyping] = useState(false)
   const [cooldowns, setCooldowns] = useState<Record<string, boolean>>({
     hunger: false,
     happiness: false,
@@ -80,6 +87,70 @@ export function Dashboard({ locale, data, onUpdate, onReset }: DashboardProps) {
   useEffect(() => {
     const interval = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(interval)
+  }, [])
+
+  // Detect unread messages
+  const currentMessageCount = data.chatHistory?.length || 0
+  const hasUnreadMessages = !isChatOpen && currentMessageCount > lastReadMessageCount
+
+  // Mark messages as read when chat is opened
+  useEffect(() => {
+    if (isChatOpen) {
+      setLastReadMessageCount(currentMessageCount)
+    }
+  }, [isChatOpen, currentMessageCount])
+
+  // Single source of truth for the bubble visibility and content
+  const bubbleTimerRef = useRef<any>(null)
+
+  // Logic to handle message arrival and typing state
+  useEffect(() => {
+    // If chat is open, we don't show any bubbles on the sprite
+    if (isChatOpen) {
+      setShowSpriteBubble(false)
+      setSpriteBubbleText('')
+      if (bubbleTimerRef.current) clearTimeout(bubbleTimerRef.current)
+      return
+    }
+
+    // Handle Typing (Pensando...)
+    if (isRegenmonTyping) {
+      setShowSpriteBubble(true)
+      setSpriteBubbleText('') // Importante: Limpiar para mostrar solo "..."
+      if (bubbleTimerRef.current) clearTimeout(bubbleTimerRef.current)
+      return
+    }
+
+    // Handle incoming messages
+    if (data.chatHistory && data.chatHistory.length > 0) {
+      const lastMessage = data.chatHistory[data.chatHistory.length - 1]
+
+      // If it's a new message from the assistant
+      if (lastMessage.role === 'assistant' && lastMessage.id !== lastShownMessageId) {
+        setLastShownMessageId(lastMessage.id)
+        setSpriteBubbleText(lastMessage.content)
+        setShowSpriteBubble(true)
+
+        // Start 5 second timer to hide
+        if (bubbleTimerRef.current) clearTimeout(bubbleTimerRef.current)
+        bubbleTimerRef.current = setTimeout(() => {
+          setShowSpriteBubble(false)
+          setSpriteBubbleText('')
+          bubbleTimerRef.current = null
+        }, 5000)
+      }
+    }
+  }, [isRegenmonTyping, data.chatHistory, isChatOpen, lastShownMessageId])
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (bubbleTimerRef.current) clearTimeout(bubbleTimerRef.current)
+    }
+  }, [])
+
+  const handleTypingChange = useCallback((typing: boolean) => {
+    setIsRegenmonTyping(typing)
   }, [])
 
   // Passive stat drain: every 5 seconds, decrease each stat by 1
@@ -109,9 +180,9 @@ export function Dashboard({ locale, data, onUpdate, onReset }: DashboardProps) {
           drainTickRef.current = 0
           const id = floatingIdRef.current++
           const randomX = Math.random() * 60 - 30
-          setFloatingTexts((prev) => [...prev, { id, stat: 'drain', color: '#cd5c5c', x: randomX }])
+          setFloatingTexts((prev: any) => [...prev, { id, stat: 'drain', color: '#cd5c5c', x: randomX }])
           setTimeout(() => {
-            setFloatingTexts((prev) => prev.filter((f) => f.id !== id))
+            setFloatingTexts((prev: any) => prev.filter((f: any) => f.id !== id))
           }, 1200)
         }
         const allZero = newStats.happiness <= 0 && newStats.energy <= 0 && newStats.hunger <= 0
@@ -158,18 +229,18 @@ export function Dashboard({ locale, data, onUpdate, onReset }: DashboardProps) {
       // Floating +10 text
       const id = floatingIdRef.current++
       const randomX = Math.random() * 60 - 30
-      setFloatingTexts((prev) => [...prev, { id, stat, color: STAT_COLORS[stat], x: randomX }])
+      setFloatingTexts((prev: any) => [...prev, { id, stat, color: STAT_COLORS[stat], x: randomX }])
       setTimeout(() => {
-        setFloatingTexts((prev) => prev.filter((f) => f.id !== id))
+        setFloatingTexts((prev: any) => prev.filter((f: any) => f.id !== id))
       }, 1200)
 
       // Start cooldown
-      setCooldowns((prev) => ({ ...prev, [stat]: true }))
+      setCooldowns((prev: any) => ({ ...prev, [stat]: true }))
       setTimeout(() => {
-        setCooldowns((prev) => ({ ...prev, [stat]: false }))
+        setCooldowns((prev: any) => ({ ...prev, [stat]: false }))
       }, 3000)
     },
-    [data, onUpdate, cooldowns]
+    [data, onUpdate, cooldowns, isGameOver]
   )
 
   // Force re-render sync with `now`
@@ -205,6 +276,47 @@ export function Dashboard({ locale, data, onUpdate, onReset }: DashboardProps) {
           animation: cooldownPulse 1s ease-in-out infinite;
           cursor: not-allowed !important;
           filter: grayscale(60%);
+        }
+        @keyframes notificationPulse {
+          0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+          50% { transform: scale(1.05); box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+        }
+        .notification-pulse {
+          animation: notificationPulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes bubbleFadeIn {
+          0% {
+            opacity: 0;
+            transform: translateY(10px) scale(0.9);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+        
+        .sprite-bubble {
+          animation: bubbleFadeIn 0.3s ease-out forwards;
+        }
+        
+        /* Responsive chat overlay */
+        @media (max-width: 1024px) {
+          .chat-overlay-responsive {
+            width: 380px !important;
+            height: 550px !important;
+          }
+        }
+        
+        @media (max-width: 640px) {
+          .chat-overlay-responsive {
+            bottom: 80px !important;
+            right: 12px !important;
+            left: 12px !important;
+            width: auto !important;
+            height: calc(100vh - 180px) !important;
+            max-height: 600px !important;
+          }
         }
       `}</style>
 
@@ -287,6 +399,39 @@ export function Dashboard({ locale, data, onUpdate, onReset }: DashboardProps) {
                 <div className="h-2 w-20 opacity-30 sm:w-24" style={{ backgroundColor: archetype.color, filter: 'blur(4px)' }} />
               </div>
 
+              {/* Sprite Speech Bubble (when chat is closed) */}
+              {showSpriteBubble && !isChatOpen && (
+                <div
+                  className="sprite-bubble absolute top-0 left-[60%] -translate-x-1/2 -translate-y-full"
+                  style={{
+                    maxWidth: '280px',
+                    width: 'max-content',
+                    zIndex: 20,
+                    marginTop: '-16px',
+                  }}
+                >
+                  <div
+                    className="nes-balloon from-left"
+                    style={{
+                      backgroundColor: 'var(--secondary)',
+                      color: 'var(--foreground)',
+                      fontSize: '13px',
+                      padding: '12px 16px',
+                      lineHeight: '1.5',
+                      wordBreak: 'break-word',
+                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+                      position: 'relative',
+                    }}
+                  >
+                    {spriteBubbleText ? (
+                      spriteBubbleText
+                    ) : isRegenmonTyping ? (
+                      <span className="animate-pulse">...</span>
+                    ) : null}
+                  </div>
+                </div>
+              )}
+
               {floatingTexts.map((ft) => (
                 <span
                   key={ft.id}
@@ -324,8 +469,71 @@ export function Dashboard({ locale, data, onUpdate, onReset }: DashboardProps) {
           )}
         </div>
 
-        {/* ITEM 2: Chat Box (Placed directly under Sprite) */}
-        <ChatBox data={data} locale={locale} onUpdate={onUpdate} isGameOver={isGameOver} />
+        {/* Floating Chat Button */}
+        <button
+          type="button"
+          className={`nes-btn is-primary hover-lift btn-press ${hasUnreadMessages ? 'notification-pulse' : ''}`}
+          onClick={() => setIsChatOpen(!isChatOpen)}
+          style={{
+            position: 'fixed',
+            bottom: '24px',
+            right: '24px',
+            width: '64px',
+            height: '64px',
+            borderRadius: '50%',
+            padding: '0',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+          }}
+          title={isChatOpen ? (locale === 'es' ? 'Ocultar chat' : 'Hide chat') : (locale === 'es' ? 'Mostrar chat' : 'Show chat')}
+        >
+          <MessageCircle className="h-6 w-6" />
+          {hasUnreadMessages && (
+            <span
+              style={{
+                position: 'absolute',
+                top: '8px',
+                right: '8px',
+                width: '16px',
+                height: '16px',
+                borderRadius: '50%',
+                backgroundColor: '#ef4444',
+                border: '2px solid white',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '10px',
+                fontWeight: 'bold',
+                color: 'white',
+              }}
+            >
+              {currentMessageCount - lastReadMessageCount}
+            </span>
+          )}
+        </button>
+
+        {/* Chat Overlay */}
+        {isChatOpen && (
+          <div
+            style={{
+              position: 'fixed',
+              bottom: '100px',
+              right: '24px',
+              width: '450px',
+              height: '600px',
+              zIndex: 999,
+              boxShadow: '0 8px 24px rgba(0, 0, 0, 0.4)',
+              borderRadius: '8px',
+              overflow: 'hidden',
+            }}
+            className="chat-overlay-responsive"
+          >
+            <ChatBox data={data} locale={locale} onUpdate={onUpdate} isGameOver={isGameOver} isOpen={isChatOpen} onTypingChange={handleTypingChange} />
+          </div>
+        )}
 
         {/* ITEM 3: Action Buttons */}
         <div
