@@ -10,29 +10,36 @@ interface ChatBoxProps {
     locale: 'es' | 'en'
     onUpdate: (data: RegenmonData) => void
     isGameOver?: boolean
+    isOpen: boolean
 }
 
-export function ChatBox({ data, locale, onUpdate, isGameOver }: ChatBoxProps) {
+export function ChatBox({ data, locale, onUpdate, isGameOver, isOpen }: ChatBoxProps) {
     const [inputValue, setInputValue] = useState('')
     const [messages, setMessages] = useState<ChatMessage[]>(data.chatHistory || [])
     const [memories, setMemories] = useState<string[]>(data.memories || [])
     const [isTyping, setIsTyping] = useState(false)
     const messagesEndRef = useRef<HTMLDivElement>(null)
     const inputRef = useRef<HTMLInputElement>(null)
+    const chatContainerRef = useRef<HTMLDivElement>(null)
+    const [sessionCount, setSessionCount] = useState(0)
+
+    useEffect(() => {
+        if (isOpen) setSessionCount(0)
+    }, [isOpen])
+
+    // Auto-scroll internal container only (avoids page scroll)
+    useEffect(() => {
+        if (chatContainerRef.current) {
+            chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight
+        }
+    }, [messages, isTyping])
 
     const s = t(locale)
 
     const isFirstRun = useRef(true)
     const warningCooldowns = useRef<{ [key: string]: number }>({})
 
-    // Auto-scroll to bottom (skip on first mount)
-    useEffect(() => {
-        if (isFirstRun.current) {
-            isFirstRun.current = false
-            return
-        }
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-    }, [messages, isTyping])
+
 
     // Auto-chat triggers for low stats
     useEffect(() => {
@@ -122,11 +129,23 @@ export function ChatBox({ data, locale, onUpdate, isGameOver }: ChatBoxProps) {
         setInputValue('')
         setIsTyping(true)
 
-        // Update stats: +5 Happiness, -3 Energy
-        // Bonus penalty -5 Energy if > 5 messages in current session (simulated by checking length against initial length isn't ideal, let's just do base penalty first)
+        // Update stats: progressive energy cost
+        const currentSession = sessionCount + 1
+        setSessionCount(currentSession)
+
+        let energyCost = 0
+
+        // Rule 1: Session Length (First 3 msgs free, then progressive penalty)
+        if (currentSession > 8) energyCost += 5
+        else if (currentSession > 3) energyCost += 2
+
+        // Rule 2: Message Length (>50 chars penalty)
+        if (inputValue.length > 100) energyCost += 3
+        else if (inputValue.length > 50) energyCost += 1
+
         const newStats = { ...data.stats }
         newStats.happiness = Math.min(100, newStats.happiness + 5)
-        newStats.energy = Math.max(0, newStats.energy - 3)
+        newStats.energy = Math.max(0, newStats.energy - energyCost)
 
         // Check energy penalty for spamming (simplified logic: just base cost for now as per prompt)
         // "Si la conversación tiene más de 5 mensajes seguidos" -> implementation details: could track session count.
@@ -157,6 +176,9 @@ export function ChatBox({ data, locale, onUpdate, isGameOver }: ChatBoxProps) {
             const json = await response.json()
 
             if (json.error) throw new Error(json.error)
+
+            // Artificial delay to make it feel natural (typing specificication)
+            await new Promise(r => setTimeout(r, 1000))
 
             let replyContent = json.reply || '...'
 
@@ -244,6 +266,7 @@ export function ChatBox({ data, locale, onUpdate, isGameOver }: ChatBoxProps) {
 
             {/* Messages Area */}
             <div
+                ref={chatContainerRef}
                 className="flex flex-col gap-3 overflow-y-auto mb-4 p-2 custom-scrollbar"
                 style={{ height: '300px', backgroundColor: 'var(--background)' }}
             >

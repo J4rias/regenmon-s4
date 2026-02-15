@@ -48,6 +48,8 @@ const strings = {
     playButton: 'Play',
     restButton: 'Rest',
     gameOver: 'GAME OVER',
+    openChat: 'Open Chat',
+    closeChat: 'Close Chat',
   },
   es: {
     title: 'Regenmon',
@@ -94,10 +96,12 @@ const strings = {
     playButton: 'Jugar',
     restButton: 'Descansar',
     gameOver: 'FIN DEL JUEGO',
+    openChat: 'Abrir Chat',
+    closeChat: 'Cerrar Chat',
   },
 } as const
 
-export type Strings = (typeof strings)['en']
+export type Strings = { [K in keyof typeof strings['en']]: string }
 
 export function t(locale: Locale): Strings {
   return strings[locale]
