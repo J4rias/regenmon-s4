@@ -15,21 +15,17 @@ export function TopBar({ isDark, locale, onToggleTheme, onToggleLang }: TopBarPr
   const s = t(locale)
 
   return (
-    <header className="sticky top-0 z-40 flex items-center justify-between border-b-4 border-border px-4 py-3 sm:px-6" style={{ backgroundColor: 'var(--card)' }}>
-      <h1
-        className="text-sm leading-relaxed sm:text-lg"
-        style={{ color: 'var(--foreground)' }}
-      >
-        {s.title}
-      </h1>
-
+    <header
+      className="sticky top-0 z-40 flex items-center justify-end border-b-2 border-border px-3 py-1.5 sm:px-5"
+      style={{ backgroundColor: 'var(--card)' }}
+    >
       <div className="flex items-center gap-2">
         {/* Language toggle */}
         <button
           type="button"
           onClick={onToggleLang}
-          className="nes-btn"
-          style={{ fontSize: '10px', padding: '4px 12px' }}
+          className="nes-btn btn-press"
+          style={{ fontSize: '9px', padding: '3px 10px' }}
           aria-label={locale === 'en' ? 'Cambiar a Espanol' : 'Switch to English'}
         >
           {locale === 'en' ? 'ES' : 'EN'}
@@ -39,14 +35,14 @@ export function TopBar({ isDark, locale, onToggleTheme, onToggleLang }: TopBarPr
         <button
           type="button"
           onClick={onToggleTheme}
-          className="nes-btn flex items-center gap-2"
-          style={{ fontSize: '10px', padding: '4px 10px' }}
+          className="nes-btn btn-press flex items-center"
+          style={{ fontSize: '9px', padding: '3px 8px' }}
           aria-label={isDark ? s.lightTheme : s.darkTheme}
         >
           {isDark ? (
-            <Sun className="h-4 w-4" />
+            <Sun className="h-3.5 w-3.5" />
           ) : (
-            <Moon className="h-4 w-4" />
+            <Moon className="h-3.5 w-3.5" />
           )}
         </button>
       </div>

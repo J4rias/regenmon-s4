@@ -46,30 +46,30 @@ export function Incubator({ locale, onHatch }: IncubatorProps) {
   }
 
   return (
-    <div className={`flex min-h-[calc(100vh-60px)] flex-col items-center justify-center px-4 py-10 sm:px-6 transition-opacity duration-500 ${isHatching ? 'opacity-0 scale-95' : 'opacity-100'}`}>
+    <div className={`flex min-h-[calc(100vh-36px)] flex-col items-center justify-center px-3 py-4 sm:px-6 sm:py-6 transition-opacity duration-500 ${isHatching ? 'opacity-0 scale-95' : 'opacity-100'}`}>
       <div
         className="nes-container is-rounded w-full max-w-3xl animate-fade-in"
-        style={{ backgroundColor: 'var(--card)', color: 'var(--foreground)' }}
+        style={{ backgroundColor: 'var(--card)', color: 'var(--foreground)', padding: '1rem 1.25rem' }}
       >
         {/* Title */}
         <h2
-          className="mb-2 text-center text-lg leading-relaxed sm:text-2xl"
-          style={{ color: 'var(--foreground)' }}
+          className="mb-1 text-center text-base leading-relaxed sm:text-xl"
+          style={{ color: '#d4a017' }}
         >
           {s.createTitle}
         </h2>
         <p
-          className="mb-8 text-center text-xs leading-relaxed sm:text-sm"
-          style={{ color: 'var(--muted-foreground)' }}
+          className="mb-5 text-center leading-relaxed"
+          style={{ color: 'var(--muted-foreground)', fontSize: '10px' }}
         >
           {s.subtitle}
         </p>
 
         {/* Name input with character counter */}
-        <div className="mb-8">
+        <div className="mb-5">
           <label
             htmlFor="regenmon-name"
-            className="mb-3 block text-xs leading-relaxed sm:text-sm"
+            className="mb-2 block text-xs leading-relaxed"
             style={{ color: 'var(--foreground)' }}
           >
             {s.nameLabel}
@@ -107,11 +107,11 @@ export function Incubator({ locale, onHatch }: IncubatorProps) {
         </div>
 
         {/* Archetype selection */}
-        <div className="mb-8">
-          <p className="mb-4 text-xs leading-relaxed sm:text-sm" style={{ color: 'var(--foreground)' }}>
+        <div className="mb-5">
+          <p className="mb-3 text-xs leading-relaxed" style={{ color: 'var(--foreground)' }}>
             {s.selectArchetype}
           </p>
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             {ARCHETYPES.map((arch) => {
               const isSelected = selectedType === arch.id
               return (
@@ -119,18 +119,19 @@ export function Incubator({ locale, onHatch }: IncubatorProps) {
                   key={arch.id}
                   type="button"
                   onClick={() => setSelectedType(arch.id)}
-                  className={`nes-container is-rounded cursor-pointer text-left transition-all duration-300 hover-lift ${isSelected ? 'animate-select-pop' : ''}`}
+                  className={`archetype-card nes-container is-rounded cursor-pointer text-left transition-all duration-300 ${isSelected ? 'animate-select-pop' : ''}`}
                   style={{
+                    '--card-glow-color': arch.color,
                     borderColor: isSelected ? arch.color : 'var(--border)',
                     backgroundColor: isSelected ? arch.colorDark : 'var(--secondary)',
                     color: 'var(--foreground)',
                     boxShadow: isSelected ? `0 0 20px ${arch.color}60, 0 0 40px ${arch.color}20` : 'none',
-                    padding: '16px',
-                  }}
+                    padding: '12px',
+                  } as React.CSSProperties}
                 >
-                  <div className="flex flex-col items-center gap-3">
+                  <div className="flex flex-col items-center gap-2">
                     {/* Archetype illustration */}
-                    <div className={`relative h-24 w-24 sm:h-28 sm:w-28 transition-transform duration-300 ${isSelected ? 'scale-110' : ''}`}>
+                    <div className={`relative h-20 w-20 sm:h-24 sm:w-24 transition-transform duration-300 ${isSelected ? 'scale-110' : ''}`}>
                       <Image
                         src={arch.image}
                         alt={arch.getName(locale)}
@@ -140,22 +141,21 @@ export function Incubator({ locale, onHatch }: IncubatorProps) {
                         unoptimized
                       />
                     </div>
-                    {/* Name: strong foreground color for contrast in both themes */}
                     <span
-                      className="text-sm font-bold sm:text-base"
+                      className="text-xs font-bold sm:text-sm"
                       style={{ color: 'var(--foreground)' }}
                     >
                       {arch.getName(locale)}
                     </span>
                     <span
-                      className="text-center text-xs leading-relaxed"
-                      style={{ color: isSelected ? arch.color : 'var(--muted-foreground)' }}
+                      className="text-center leading-relaxed"
+                      style={{ color: isSelected ? arch.color : 'var(--muted-foreground)', fontSize: '9px' }}
                     >
                       {`"${arch.getLabel(locale)}"`}
                     </span>
                     <span
                       className="text-center leading-relaxed"
-                      style={{ color: 'var(--muted-foreground)', fontSize: '10px' }}
+                      style={{ color: 'var(--muted-foreground)', fontSize: '8px' }}
                     >
                       {arch.getDescription(locale)}
                     </span>
