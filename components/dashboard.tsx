@@ -107,40 +107,46 @@ export function Dashboard({ locale, data, onUpdate, onReset }: DashboardProps) {
   useEffect(() => {
     // If chat is open, we don't show any bubbles on the sprite
     if (isChatOpen) {
-      setShowSpriteBubble(false)
-      setSpriteBubbleText('')
-      if (bubbleTimerRef.current) clearTimeout(bubbleTimerRef.current)
-      return
-    }
-
-    // Handle Typing (Pensando...)
-    if (isRegenmonTyping) {
-      setShowSpriteBubble(true)
-      setSpriteBubbleText('') // Importante: Limpiar para mostrar solo "..."
-      if (bubbleTimerRef.current) clearTimeout(bubbleTimerRef.current)
-      return
-    }
-
-    // Handle incoming messages
-    if (data.chatHistory && data.chatHistory.length > 0) {
-      const lastMessage = data.chatHistory[data.chatHistory.length - 1]
-
-      // If it's a new message from the assistant
-      if (lastMessage.role === 'assistant' && lastMessage.id !== lastShownMessageId) {
-        setLastShownMessageId(lastMessage.id)
-        setSpriteBubbleText(lastMessage.content)
-        setShowSpriteBubble(true)
-
-        // Start 5 second timer to hide
-        if (bubbleTimerRef.current) clearTimeout(bubbleTimerRef.current)
-        bubbleTimerRef.current = setTimeout(() => {
-          setShowSpriteBubble(false)
-          setSpriteBubbleText('')
-          bubbleTimerRef.current = null
-        }, 5000)
+      if (showSpriteBubble) setShowSpriteBubble(false)
+      if (spriteBubbleText) setSpriteBubbleText('')
+      if (bubbleTimerRef.current) {
+        clearTimeout(bubbleTimerRef.current)
+        bubbleTimerRef.current = null
       }
+      return
     }
-  }, [isRegenmonTyping, data.chatHistory, isChatOpen, lastShownMessageId])
+
+    // Capture the last message
+    const history = data.chatHistory || []
+    const lastAssistantMessage = [...history].reverse().find(m => m.role === 'assistant')
+
+    // Determine what to show
+    if (isRegenmonTyping) {
+      // If we are typing, show '...' (via UI logic) and clear text
+      if (!showSpriteBubble) setShowSpriteBubble(true)
+      if (spriteBubbleText) setSpriteBubbleText('')
+      if (bubbleTimerRef.current) {
+        clearTimeout(bubbleTimerRef.current)
+        bubbleTimerRef.current = null
+      }
+    } else if (lastAssistantMessage && lastAssistantMessage.id !== lastShownMessageId) {
+      // If we have a new assistant message and NOT typing anymore
+      setLastShownMessageId(lastAssistantMessage.id)
+      setSpriteBubbleText(lastAssistantMessage.content)
+      setShowSpriteBubble(true)
+
+      // Start 5 second timer to hide
+      if (bubbleTimerRef.current) clearTimeout(bubbleTimerRef.current)
+      bubbleTimerRef.current = setTimeout(() => {
+        setShowSpriteBubble(false)
+        setSpriteBubbleText('')
+        bubbleTimerRef.current = null
+      }, 5000)
+    } else if (!isRegenmonTyping && !bubbleTimerRef.current && showSpriteBubble && !spriteBubbleText) {
+      // Safeguard: hide if not typing, no message and no timer is running
+      setShowSpriteBubble(false)
+    }
+  }, [isChatOpen, isRegenmonTyping, data.chatHistory, lastShownMessageId, showSpriteBubble, spriteBubbleText])
 
   // Cleanup on unmount
   useEffect(() => {
@@ -402,12 +408,11 @@ export function Dashboard({ locale, data, onUpdate, onReset }: DashboardProps) {
               {/* Sprite Speech Bubble (when chat is closed) */}
               {showSpriteBubble && !isChatOpen && (
                 <div
-                  className="sprite-bubble absolute top-0 left-[60%] -translate-x-1/2 -translate-y-full"
+                  className="sprite-bubble absolute top-[10px] left-[85%] -translate-x-1/2"
                   style={{
                     maxWidth: '280px',
                     width: 'max-content',
                     zIndex: 20,
-                    marginTop: '-16px',
                   }}
                 >
                   <div
@@ -515,25 +520,28 @@ export function Dashboard({ locale, data, onUpdate, onReset }: DashboardProps) {
           )}
         </button>
 
-        {/* Chat Overlay */}
-        {isChatOpen && (
-          <div
-            style={{
-              position: 'fixed',
-              bottom: '100px',
-              right: '24px',
-              width: '450px',
-              height: '600px',
-              zIndex: 999,
-              boxShadow: '0 8px 24px rgba(0, 0, 0, 0.4)',
-              borderRadius: '8px',
-              overflow: 'hidden',
-            }}
-            className="chat-overlay-responsive"
-          >
-            <ChatBox data={data} locale={locale} onUpdate={onUpdate} isGameOver={isGameOver} isOpen={isChatOpen} onTypingChange={handleTypingChange} />
-          </div>
-        )}
+        {/* Chat Overlay (Kept mounted to maintain state during transitions) */}
+        <div
+          style={{
+            position: 'fixed',
+            bottom: '100px',
+            right: '24px',
+            width: '450px',
+            height: '600px',
+            zIndex: 999,
+            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.4)',
+            borderRadius: '8px',
+            overflow: 'hidden',
+            opacity: isChatOpen ? 1 : 0,
+            pointerEvents: isChatOpen ? 'auto' : 'none',
+            visibility: isChatOpen ? 'visible' : 'hidden',
+            transition: 'opacity 0.3s ease, transform 0.3s ease',
+            transform: isChatOpen ? 'translateY(0)' : 'translateY(20px)',
+          }}
+          className="chat-overlay-responsive"
+        >
+          <ChatBox data={data} locale={locale} onUpdate={onUpdate} isGameOver={isGameOver} isOpen={isChatOpen} onTypingChange={handleTypingChange} />
+        </div>
 
         {/* ITEM 3: Action Buttons */}
         <div
