@@ -1,14 +1,17 @@
-import type { Metadata } from 'next'
-import { Geist, Geist_Mono } from 'next/font/google'
+import type { Metadata, Viewport } from 'next'
+import { Press_Start_2P } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 
-const _geist = Geist({ subsets: ["latin"] });
-const _geistMono = Geist_Mono({ subsets: ["latin"] });
+const pressStart2P = Press_Start_2P({
+  weight: '400',
+  subsets: ['latin'],
+  variable: '--font-press-start',
+})
 
 export const metadata: Metadata = {
-  title: 'v0 App',
-  description: 'Created with v0',
+  title: 'Regenmon - Mascota Virtual Post-Apocaliptica',
+  description: 'Cria a tu Regenmon, una mascota virtual en un mundo post-apocaliptico estilo retro 8-bit.',
   generator: 'v0.app',
   icons: {
     icon: [
@@ -29,14 +32,26 @@ export const metadata: Metadata = {
   },
 }
 
+export const viewport: Viewport = {
+  themeColor: '#1a1a1a',
+  width: 'device-width',
+  initialScale: 1,
+}
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
-      <body className="font-sans antialiased">
+    <html lang="es" suppressHydrationWarning>
+      <head>
+        <link
+          href="https://unpkg.com/nes.css@2.3.0/css/nes.min.css"
+          rel="stylesheet"
+        />
+      </head>
+      <body className={`${pressStart2P.variable} font-sans antialiased`}>
         {children}
         <Analytics />
       </body>
