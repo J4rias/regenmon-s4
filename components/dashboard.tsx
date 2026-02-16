@@ -320,62 +320,67 @@ export function Dashboard({ locale, data, onUpdate, onReset }: DashboardProps) {
 
         // Validation: Sufficient coins
         if (currentCoins < cost) {
-          triggerPopup('drain', 0) // Reuse drain color for error visual if needed, or just relying on UI feedback
-          // Show tooltip or message: "Necesitas 10 celdas 🪙"
+          triggerPopup('drain', 0)
           setSpriteBubbleText(s.needCoins || "Need 10 cells 🪙")
           setShowSpriteBubble(true)
+          setTimeout(() => setShowSpriteBubble(true), 10) // Small hack to re-trigger if already open
           setTimeout(() => setShowSpriteBubble(false), 3000)
           return
         }
 
-        // Proceed with feeding
-        const amount = 10
-        const newStats = { ...data.stats }
-        newStats[stat] = Math.min(100, Math.max(0, newStats[stat] + amount))
-
-        // Deduct coins
-        const newCoins = currentCoins - cost
-
-        // Add history
-        const newAction: EconomyAction = {
-          id: crypto.randomUUID(),
-          type: 'feed',
-          amount: -cost,
-          date: new Date().toISOString()
-        }
-
-        const newHistory = [newAction, ...(data.history || [])].slice(0, 10)
-
-        // Show "Processing..." (simulated by short delay or just immediate feedback)
-        // For this task, we'll do immediate update but show visual feedback
-
-        // Trigger floating text for cost
-        triggerPopup('drain', -cost) // Using drain color (red) for cost, or valid 'drain' type
-
-        // Trigger generic "Success" message via sprite or toast
-        setSpriteBubbleText("¡Ñam ñam! 😋")
+        // --- NEW: Processing State ---
+        setCooldowns((prev: any) => ({ ...prev, [stat]: true }))
+        setSpriteBubbleText("⏳ Procesando…")
         setShowSpriteBubble(true)
-        setTimeout(() => setShowSpriteBubble(false), 2000)
 
-        onUpdate({
-          ...data,
-          stats: newStats,
-          coins: newCoins,
-          history: newHistory
-        })
+        // Artificial delay for specific user requirement
+        setTimeout(() => {
+          // Proceed with feeding
+          const amount = 10
+          const newStats = { ...data.stats }
+          newStats[stat] = Math.min(100, Math.max(0, newStats[stat] + amount))
+          const newCoins = currentCoins - cost
+          const newAction: EconomyAction = {
+            id: crypto.randomUUID(),
+            type: 'feed',
+            amount: -cost,
+            date: new Date().toISOString()
+          }
+          const newHistory = [newAction, ...(data.history || [])].slice(0, 10)
+
+          // Update data
+          onUpdate({
+            ...data,
+            stats: newStats,
+            coins: newCoins,
+            history: newHistory
+          })
+
+          // Visual feedback
+          triggerPopup('drain', -cost)
+          setSpriteBubbleText("✅ ¡Listo!")
+
+          // Clear "Listo" after 2 seconds and release cooldown
+          setTimeout(() => {
+            setShowSpriteBubble(false)
+            setSpriteBubbleText("")
+            setCooldowns((prev: any) => ({ ...prev, [stat]: false }))
+          }, 2000)
+        }, 800)
+
       } else {
         // Standard logic for other stats (no cost yet)
         const amount = 10
         const newStats = { ...data.stats }
         newStats[stat] = Math.min(100, Math.max(0, newStats[stat] + amount))
         onUpdate({ ...data, stats: newStats })
-      }
 
-      // Start cooldown
-      setCooldowns((prev: any) => ({ ...prev, [stat]: true }))
-      setTimeout(() => {
-        setCooldowns((prev: any) => ({ ...prev, [stat]: false }))
-      }, 3000)
+        // Start standard cooldown
+        setCooldowns((prev: any) => ({ ...prev, [stat]: true }))
+        setTimeout(() => {
+          setCooldowns((prev: any) => ({ ...prev, [stat]: false }))
+        }, 3000)
+      }
     },
     [data, onUpdate, cooldowns, isGameOver, triggerPopup, s]
   )
@@ -807,7 +812,7 @@ export function Dashboard({ locale, data, onUpdate, onReset }: DashboardProps) {
                 data.history.map((action) => (
                   <div key={action.id} className="flex justify-between items-center text-[10px] sm:text-xs border-b border-gray-700 pb-1 last:border-0">
                     <span className="flex items-center gap-1">
-                      {action.type === 'feed' ? '🍎 Alimentar' : '🪙 Ganar'}
+                      {action.type === 'feed' ? (s.historyFeed || '🍎 Alimentar') : (s.historyEarn || '🪙 Ganar')}
                     </span>
                     <span className={action.amount < 0 ? 'text-red-400' : 'text-green-400'}>
                       {action.amount > 0 ? `+${action.amount}` : action.amount} Cells
@@ -818,7 +823,7 @@ export function Dashboard({ locale, data, onUpdate, onReset }: DashboardProps) {
                   </div>
                 ))
               ) : (
-                <p className="text-[10px] text-gray-500 italic text-center py-2">No hay actividad reciente</p>
+                <p className="text-[10px] text-gray-500 italic text-center py-2">{s.noHistory || "No hay actividad reciente"}</p>
               )}
             </div>
           </details>

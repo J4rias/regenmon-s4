@@ -56,6 +56,9 @@ const strings = {
     // Economy
     needCoins: 'Need 10 cells 🪙',
     historyTitle: 'History',
+    noHistory: 'No recent activity',
+    historyFeed: '🍎 Feed',
+    historyEarn: '🪙 Earn',
   },
   es: {
     title: 'Regenmon',
@@ -110,6 +113,9 @@ const strings = {
     // Economy
     needCoins: 'Necesitas 10 celdas 🪙',
     historyTitle: 'Historial',
+    noHistory: 'No hay actividad reciente',
+    historyFeed: '🍎 Alimentar',
+    historyEarn: '🪙 Ganar',
   },
 } as const
 

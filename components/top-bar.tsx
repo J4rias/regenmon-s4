@@ -103,9 +103,15 @@ export function TopBar({
 
           {/* Coin Display */}
           {regenmonData && (
-            <div className="flex items-center gap-2 mr-2 px-3 py-1 bg-black/20 rounded border border-white/20" title="Cells (Moneda)">
+            <div
+              className={`flex items-center gap-2 mr-2 px-3 py-1 rounded border ${isDark ? 'bg-black/20 border-white/20' : 'bg-gray-200/50 border-black/10'}`}
+              title="Cells (Moneda)"
+            >
               <i className="nes-icon coin is-small scale-75"></i>
-              <span className="text-xs sm:text-sm font-bold relative group" style={{ color: '#fbbf24' }}>
+              <span
+                className="text-xs sm:text-sm font-bold relative group"
+                style={{ color: isDark ? '#fbbf24' : '#b45309' }} // Darker amber for light theme
+              >
                 {regenmonData.coins ?? 0}
               </span>
             </div>
