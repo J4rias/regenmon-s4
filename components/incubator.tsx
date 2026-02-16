@@ -44,6 +44,8 @@ export function Incubator({ locale, onHatch }: IncubatorProps) {
           hunger: Math.floor(Math.random() * 50) + 25,
         },
         createdAt: new Date().toISOString(),
+        coins: 100,
+        history: [],
       }
       onHatch(data)
     }, 600)

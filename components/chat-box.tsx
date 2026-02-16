@@ -120,7 +120,19 @@ export function ChatBox({ data, locale, onUpdate, isGameOver, isOpen, onTypingCh
     }, [data.chatHistory, data.memories])
 
     const handleSend = async () => {
-        if (!inputValue.trim() || isTyping || isGameOver) return
+        const trimmedInput = inputValue.trim()
+        if (!trimmedInput || isTyping || isGameOver) return
+
+        // Easter Egg: /cells
+        if (trimmedInput.toLowerCase() === '/cells') {
+            const newCoins = (data.coins ?? 0) + 100
+            onUpdate({
+                ...data,
+                coins: newCoins
+            })
+            setInputValue('')
+            return
+        }
 
         const userMsg: ChatMessage = {
             id: Date.now().toString(),

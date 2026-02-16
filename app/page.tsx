@@ -38,7 +38,13 @@ function GameContent() {
 
     if (saved) {
       try {
-        setRegenmon(JSON.parse(saved))
+        const parsed = JSON.parse(saved)
+        // Migration: Add coins if missing
+        if (typeof parsed.coins === 'undefined') {
+          parsed.coins = 100
+          parsed.history = []
+        }
+        setRegenmon(parsed)
       } catch {
         localStorage.removeItem(key)
         setRegenmon(null)

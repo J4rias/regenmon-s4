@@ -160,6 +160,18 @@ export function Dashboard({ locale, data, onUpdate, onReset }: DashboardProps) {
     prevStatsRef.current = curr
   }, [data.stats, triggerPopup])
 
+  const prevCoinsRef = useRef(data.coins)
+  useEffect(() => {
+    const prev = prevCoinsRef.current
+    const curr = data.coins ?? 0
+    if (curr > prev) {
+      // User said: "Cuando GANAS: mostrar por ejemplo +50 (icono celdas) en verde flotando"
+      // Hunger color is green (#76c442)
+      triggerPopup('hunger', curr - prev)
+    }
+    prevCoinsRef.current = curr
+  }, [data.coins, triggerPopup])
+
   // Tick every second for the timer
   useEffect(() => {
     const interval = setInterval(() => setNow(Date.now()), 1000)
