@@ -1,9 +1,8 @@
-'use client'
-
 import { useState, useEffect, useRef } from 'react'
 import { Send, Brain } from 'lucide-react'
 import { RegenmonData, ChatMessage } from '@/lib/regenmon-types'
 import { t, Locale } from '@/lib/i18n'
+import { CHALLENGES, Challenge } from '@/lib/challenges'
 
 interface ChatBoxProps {
     data: RegenmonData
@@ -12,9 +11,10 @@ interface ChatBoxProps {
     isGameOver?: boolean
     isOpen: boolean
     onTypingChange?: (isTyping: boolean) => void
+    onUnlockReward: () => void
 }
 
-export function ChatBox({ data, locale, onUpdate, isGameOver, isOpen, onTypingChange }: ChatBoxProps) {
+export function ChatBox({ data, locale, onUpdate, isGameOver, isOpen, onTypingChange, onUnlockReward }: ChatBoxProps) {
     const [inputValue, setInputValue] = useState('')
     const [messages, setMessages] = useState<ChatMessage[]>(data.chatHistory || [])
     const [memories, setMemories] = useState<string[]>(data.memories || [])
@@ -23,6 +23,11 @@ export function ChatBox({ data, locale, onUpdate, isGameOver, isOpen, onTypingCh
     const inputRef = useRef<HTMLInputElement>(null)
     const chatContainerRef = useRef<HTMLDivElement>(null)
     const [sessionCount, setSessionCount] = useState(0)
+
+    // Challenge State
+    const [challengeState, setChallengeState] = useState<'IDLE' | 'PROMPT' | 'CHALLENGE'>('IDLE')
+    const [currentChallenge, setCurrentChallenge] = useState<Challenge | null>(null)
+    const [wrongAttempts, setWrongAttempts] = useState(0)
 
     useEffect(() => {
         if (isOpen) setSessionCount(0)
@@ -42,76 +47,35 @@ export function ChatBox({ data, locale, onUpdate, isGameOver, isOpen, onTypingCh
 
     const s = t(locale)
 
-    const isFirstRun = useRef(true)
-    const warningCooldowns = useRef<{ [key: string]: number }>({})
-
-
-
-    // Auto-chat triggers for low stats
+    // Check for Rescue Mode trigger
     useEffect(() => {
-        if (isGameOver) return
+        if (!isGameOver && challengeState === 'IDLE') {
+            const coins = data.coins ?? 0
+            const dailyClaimed = data.dailyRewardsClaimed ?? 0
+            const lastDate = data.lastDailyRewardDate
 
-        const checkStat = async (stat: 'happiness' | 'energy' | 'hunger', value: number) => {
-            return // Temporarily disabled auto-complaints as requested
-            const now = Date.now()
-            const lastWarn = warningCooldowns.current[stat] || 0
+            // Reset daily count if new day
+            const today = new Date().toISOString().split('T')[0]
+            const recordDate = lastDate ? lastDate.split('T')[0] : ''
+            const effectiveClaimed = recordDate === today ? dailyClaimed : 0
 
-            // Trigger if stat < 30 and no warning in last 60 seconds
-            if (value < 30 && now - lastWarn > 60000) {
-                warningCooldowns.current[stat] = now
-
-                setIsTyping(true)
-                try {
-                    // Context for the AI to know why it's talking
-                    const contextMessage = `[SYSTEM: Your ${stat} is dangerously low (${value}%). Complain to the user and warn them that if it hits 0 you might die! Answer in ${locale === 'es' ? 'Spanish' : 'English'}.]`
-
-                    const response = await fetch('/api/chat', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            message: contextMessage,
-                            history: messages, // Send current history
-                            stats: data.stats,
-                            name: data.name,
-                            type: data.type,
-                            memories: memories,
-                            locale: locale
-                        }),
-                    })
-
-                    const json = await response.json()
-                    if (json.error) throw new Error(json.error)
-
-                    const replyContent = json.reply || '...'
-
-                    const assistantMsg: ChatMessage = {
-                        id: Date.now().toString(),
-                        role: 'assistant',
-                        content: replyContent,
-                        timestamp: new Date().toISOString(),
-                    }
-
-                    const updatedHistory = [...messages, assistantMsg].slice(-20)
-                    setMessages(updatedHistory)
-                    onUpdate({ ...data, chatHistory: updatedHistory })
-
-                } catch (error) {
-                    console.error('Auto-chat error:', error)
-                } finally {
-                    setIsTyping(false)
-                    // Restore focus after auto-chat if not game over
-                    if (!isGameOver) {
-                        setTimeout(() => inputRef.current?.focus(), 10)
-                    }
-                }
+            // Trigger if 0 coins and daily limit not reached
+            if (coins <= 0 && effectiveClaimed < 3) {
+                setChallengeState('PROMPT')
+                addAssistantMessage(s.rescuePrompt)
             }
         }
+    }, [data.coins, data.dailyRewardsClaimed, data.lastDailyRewardDate, challengeState, isGameOver, s])
 
-        checkStat('happiness', data.stats.happiness)
-        checkStat('energy', data.stats.energy)
-        checkStat('hunger', data.stats.hunger)
-
-    }, [data.stats, isGameOver, messages, data, locale, onUpdate, memories])
+    const addAssistantMessage = (content: string) => {
+        const msg: ChatMessage = {
+            id: Date.now().toString(),
+            role: 'assistant',
+            content,
+            timestamp: new Date().toISOString(),
+        }
+        setMessages(prev => [...prev, msg])
+    }
 
     // Sync state with parent data updates (if parent resets or loads saves)
     useEffect(() => {
@@ -119,20 +83,46 @@ export function ChatBox({ data, locale, onUpdate, isGameOver, isOpen, onTypingCh
         if (data.memories) setMemories(data.memories)
     }, [data.chatHistory, data.memories])
 
+    const getRandomChallenge = () => {
+        return CHALLENGES[Math.floor(Math.random() * CHALLENGES.length)]
+    }
+
+    const checkPassiveEarning = (currentData: RegenmonData): RegenmonData => {
+        const today = new Date().toISOString().split('T')[0]
+        const lastDate = currentData.lastChatEarningDate ? currentData.lastChatEarningDate.split('T')[0] : ''
+
+        let dailyEarnings = lastDate === today ? (currentData.dailyChatEarnings ?? 0) : 0
+
+        // Hard Cap: 50 cells/day
+        if (dailyEarnings >= 50) return currentData
+
+        const currentCoins = currentData.coins ?? 0
+        // Difficulty Logic:
+        // < 80 coins: 80% chance
+        // >= 80 coins: 10% chance
+        const chance = currentCoins < 80 ? 0.8 : 0.1
+
+        if (Math.random() > chance) return currentData
+
+        // Earn 2-5 cells
+        const earned = Math.floor(Math.random() * 4) + 2
+
+        // Don't exceed daily cap
+        const actualEarned = Math.min(earned, 50 - dailyEarnings)
+        if (actualEarned <= 0) return currentData
+
+        // Update data
+        return {
+            ...currentData,
+            coins: currentCoins + actualEarned,
+            dailyChatEarnings: dailyEarnings + actualEarned,
+            lastChatEarningDate: new Date().toISOString()
+        }
+    }
+
     const handleSend = async () => {
         const trimmedInput = inputValue.trim()
         if (!trimmedInput || isTyping || isGameOver) return
-
-        // Easter Egg: /cells
-        if (trimmedInput.toLowerCase() === '/cells') {
-            const newCoins = (data.coins ?? 0) + 100
-            onUpdate({
-                ...data,
-                coins: newCoins
-            })
-            setInputValue('')
-            return
-        }
 
         const userMsg: ChatMessage = {
             id: Date.now().toString(),
@@ -142,19 +132,82 @@ export function ChatBox({ data, locale, onUpdate, isGameOver, isOpen, onTypingCh
         }
 
         // Optimistic update
-        const newHistory = [...messages, userMsg].slice(-20) // Keep last 20
+        const newHistory = [...messages, userMsg].slice(-20)
         setMessages(newHistory)
         setInputValue('')
+
+        // --- CHALLENGE LOGIC ---
+        if (challengeState === 'PROMPT') {
+            const lowerInput = trimmedInput.toLowerCase()
+            const affirmative = locale === 'es' ? ['si', 'sí', 'claro', 'quiero', 'ok'] : ['yes', 'yeah', 'sure', 'ok', 'yep']
+
+            if (affirmative.some(w => lowerInput.includes(w))) {
+                const challenge = getRandomChallenge()
+                setCurrentChallenge(challenge)
+                setChallengeState('CHALLENGE')
+                setWrongAttempts(0)
+                setIsTyping(true)
+                setTimeout(() => {
+                    addAssistantMessage(locale === 'es' ? challenge.question_es : challenge.question_en)
+                    setIsTyping(false)
+                }, 1000)
+                return
+            } else {
+                setChallengeState('IDLE')
+                return
+            }
+        }
+
+        if (challengeState === 'CHALLENGE' && currentChallenge) {
+            const lowerInput = trimmedInput.toLowerCase()
+            const expected = locale === 'es' ? currentChallenge.answer_es : currentChallenge.answer_en
+
+            if (lowerInput.includes(expected)) {
+                // Correct!
+                setIsTyping(true)
+                setTimeout(() => {
+                    addAssistantMessage(s.challengeCorrect)
+                    onUnlockReward() // Unlock chest
+                    setChallengeState('IDLE')
+                    setCurrentChallenge(null)
+                    setIsTyping(false)
+                }, 1000)
+            } else {
+                // Wrong
+                const newAttempts = wrongAttempts + 1
+                setWrongAttempts(newAttempts)
+                setIsTyping(true)
+
+                setTimeout(() => {
+                    if (newAttempts >= 3) {
+                        // Failed 3 times, give new question
+                        const newChallenge = getRandomChallenge()
+                        setCurrentChallenge(newChallenge)
+                        setWrongAttempts(0)
+                        addAssistantMessage(s.challengeWrong + ' ' + (locale === 'es' ? "Probemos otra:" : "Let's try another:") + ' ' + (locale === 'es' ? newChallenge.question_es : newChallenge.question_en))
+                    } else {
+                        // Hint
+                        // Simple hint: first letter
+                        const hint = expected.charAt(0).toUpperCase() + '...'
+                        addAssistantMessage(`${s.challengeWrong} ${s.challengeHint} ${hint}`)
+                    }
+                    setIsTyping(false)
+                }, 1000)
+            }
+            return
+        }
+
+        // --- NORMAL CHAT LOGIC ---
         setIsTyping(true)
+
+        // Passive Earning Check
+        let updatedData = checkPassiveEarning(data)
+        const earned = (updatedData.coins ?? 0) - (data.coins ?? 0)
 
         // Update stats: progressive energy cost
         const currentSession = sessionCount + 1
         setSessionCount(currentSession)
 
-        // New Tiered Formula:
-        // 1-5 msgs: -3 energy
-        // 6-15 msgs: -4 energy
-        // >15 msgs: -5 energy
         let baseCost = 3
         if (currentSession > 15) baseCost = 5
         else if (currentSession > 5) baseCost = 4
@@ -162,20 +215,23 @@ export function ChatBox({ data, locale, onUpdate, isGameOver, isOpen, onTypingCh
         const lengthPenalty = inputValue.length > 50 ? 2 : 0
         const energyCost = baseCost + lengthPenalty
 
-        const newStats = { ...data.stats }
+        const newStats = { ...updatedData.stats }
         newStats.happiness = Math.min(100, newStats.happiness + 5)
         newStats.energy = Math.max(0, newStats.energy - energyCost)
 
-        // Check energy penalty for spamming (simplified logic: just base cost for now as per prompt)
-        // "Si la conversación tiene más de 5 mensajes seguidos" -> implementation details: could track session count.
-        // For now, let's stick to the base requested simple implementation.
-
         onUpdate({
-            ...data,
+            ...updatedData,
             stats: newStats,
             chatHistory: newHistory,
-            memories: memories // Persist existing memories
+            memories: memories
         })
+
+        // Show earning feedback if any
+        if (earned > 0) {
+            // We can't easily show a popup from here without prop drilling triggerPopup
+            // But we can add a small system message or rely on Dashboard coin observer
+            // The dashboard observer will trigger the +popup automatically when it sees coins increase!
+        }
 
         try {
             const response = await fetch('/api/chat', {
@@ -240,7 +296,7 @@ export function ChatBox({ data, locale, onUpdate, isGameOver, isOpen, onTypingCh
             setMemories(newMemories)
 
             onUpdate({
-                ...data,
+                ...updatedData,
                 stats: newStats,
                 chatHistory: updatedHistory,
                 memories: newMemories
@@ -358,7 +414,9 @@ export function ChatBox({ data, locale, onUpdate, isGameOver, isOpen, onTypingCh
                     className={`nes-input ${isGameOver ? 'is-error' : 'is-success'}`}
                     placeholder={isGameOver
                         ? s.gameOver
-                        : (locale === 'es' ? 'Escribe algo...' : 'Say something...')
+                        : (challengeState !== 'IDLE'
+                            ? (locale === 'es' ? 'Tu respuesta...' : 'Your answer...')
+                            : (locale === 'es' ? 'Escribe algo...' : 'Say something...'))
                     }
                     disabled={isTyping || isGameOver}
                     style={{ fontSize: '12px', height: '40px' }}

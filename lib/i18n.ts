@@ -75,6 +75,15 @@ const strings = {
     rewardTitle: 'Daily Reward',
     rewardButton: 'Open Chest',
     rewardClaimed: 'Claimed!',
+    // Challenges
+    rescuePrompt: 'You are out of Cells! Want to earn 30 Cells?',
+    rescueYes: 'Yes, I do!',
+    rescueNo: 'No, thanks',
+    challengeCorrect: 'Correct! Opening chest...',
+    challengeWrong: 'Incorrect! Try again.',
+    challengeHint: 'Hint:',
+    dailyLimitReached: 'Daily limit reached!',
+    chatEarning: 'You found some cells!',
   },
   es: {
     title: 'Regenmon',
@@ -148,6 +157,15 @@ const strings = {
     rewardTitle: 'Recompensa Diaria',
     rewardButton: 'Abrir Cofre',
     rewardClaimed: '¡Reclamado!',
+    // Challenges
+    rescuePrompt: '¡Te quedaste sin Celdas! ¿Quieres ganar 30?',
+    rescueYes: '¡Sí, quiero!',
+    rescueNo: 'No, gracias',
+    challengeCorrect: '¡Correcto! Abriendo cofre...',
+    challengeWrong: '¡Incorrecto! Inténtalo de nuevo.',
+    challengeHint: 'Pista:',
+    dailyLimitReached: '¡Límite diario alcanzado!',
+    chatEarning: '¡Encontraste celdas!',
   },
 } as const
 

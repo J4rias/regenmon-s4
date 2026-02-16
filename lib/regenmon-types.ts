@@ -33,6 +33,11 @@ export interface RegenmonData {
   chatHistory?: ChatMessage[]
   memories?: string[]
   history?: EconomyAction[]
+  // Advanced Economy
+  dailyRewardsClaimed?: number // Tracks 3x limit
+  lastDailyRewardDate?: string // ISO date for reset
+  dailyChatEarnings?: number // Tracks chat farming cap
+  lastChatEarningDate?: string // ISO date to reset cap
 }
 
 export interface EconomyAction {

@@ -94,6 +94,8 @@ export function Dashboard({ locale, data, onUpdate, onReset, userSettings, onTut
   const archetype = ARCHETYPES.find((a) => a.id === data.type)!
   const s = t(locale)
 
+  const [isRewardUnlocked, setIsRewardUnlocked] = useState(false)
+
   // Floating text helper
   // Floating text helper with positioned lanes to prevent overlap
   const triggerPopup = useCallback((stat: keyof typeof STAT_COLORS | 'drain' | 'cells', amount: number) => {
@@ -421,10 +423,23 @@ export function Dashboard({ locale, data, onUpdate, onReset, userSettings, onTut
     if (onTutorialSeen) onTutorialSeen('intro')
   }
 
+  const handleUnlockReward = () => {
+    setIsRewardUnlocked(true)
+    setIsChatOpen(false) // Close chat to show chest
+  }
+
   const handleRewardClaim = (amount: number) => {
     const latest = dataRef.current
     const currentCoins = latest.coins ?? 0
     const newCoins = currentCoins + amount
+
+    // Reset/Increment Daily Counts
+    const today = new Date().toISOString().split('T')[0]
+    const lastDate = latest.lastDailyRewardDate ? latest.lastDailyRewardDate.split('T')[0] : ''
+    const dailyClaimed = lastDate === today ? (latest.dailyRewardsClaimed ?? 0) : 0
+
+    // 3x Daily Limit Check (though ChatBox shouldn't have triggered if limit reached, redundancy safety)
+    if (dailyClaimed >= 3) return
 
     // Add history
     const newAction: EconomyAction = {
@@ -438,8 +453,12 @@ export function Dashboard({ locale, data, onUpdate, onReset, userSettings, onTut
     onUpdate({
       ...latest,
       coins: newCoins,
-      history: newHistory
+      history: newHistory,
+      dailyRewardsClaimed: dailyClaimed + 1,
+      lastDailyRewardDate: new Date().toISOString()
     })
+
+    setIsRewardUnlocked(false)
   }
 
   // Force re-render sync with `now`
@@ -450,8 +469,8 @@ export function Dashboard({ locale, data, onUpdate, onReset, userSettings, onTut
       {/* Tutorial Popup */}
       {showTutorial && <TutorialPopup locale={locale} onClose={handleCloseTutorial} />}
 
-      {/* Daily Reward Chest (Shows when coins are 0) */}
-      {(data.coins ?? 0) <= 0 && (
+      {/* Daily Reward Chest (Shows ONLY IF Unlocked) */}
+      {isRewardUnlocked && (
         <DailyRewardChest locale={locale} onClaim={handleRewardClaim} />
       )}
       {/* Floating +10 animation styles */}
@@ -754,7 +773,7 @@ export function Dashboard({ locale, data, onUpdate, onReset, userSettings, onTut
           }}
           className="chat-overlay-responsive"
         >
-          <ChatBox data={data} locale={locale} onUpdate={onUpdate} isGameOver={isGameOver} isOpen={isChatOpen} onTypingChange={handleTypingChange} />
+          <ChatBox data={data} locale={locale} onUpdate={onUpdate} isGameOver={isGameOver} isOpen={isChatOpen} onTypingChange={handleTypingChange} onUnlockReward={handleUnlockReward} />
         </div>
 
         {/* ITEM 3: Action Buttons */}
