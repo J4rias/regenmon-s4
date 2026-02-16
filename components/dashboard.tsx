@@ -88,9 +88,26 @@ export function Dashboard({ locale, data, onUpdate, onReset }: DashboardProps) {
   const s = t(locale)
 
   // Floating text helper
+  // Floating text helper with positioned lanes to prevent overlap
   const triggerPopup = useCallback((stat: keyof typeof STAT_COLORS | 'drain', amount: number) => {
     const id = floatingIdRef.current++
-    const randomX = Math.random() * 60 - 30
+
+    // Assign distinct lanes or ranges based on stat type to avoid collision
+    let randomX = 0
+    if (stat === 'happiness') {
+      // Happiness: Left side (-70 to -40)
+      randomX = -40 - (Math.random() * 30)
+    } else if (stat === 'energy') {
+      // Energy: Right side (+40 to +70)
+      randomX = 40 + (Math.random() * 30)
+    } else if (stat === 'hunger') {
+      // Hunger: Center-Right (-20 to +20)
+      randomX = (Math.random() * 40) - 20
+    } else {
+      // Drain / Default: Center (-30 to +30)
+      randomX = (Math.random() * 60) - 30
+    }
+
     const color = stat === 'drain' ? '#cd5c5c' : STAT_COLORS[stat]
     setFloatingTexts((prev: any) => [...prev, { id, stat, color, x: randomX, amount }])
     setTimeout(() => {
