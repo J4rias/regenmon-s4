@@ -7,6 +7,7 @@ import type { Locale } from '@/lib/i18n'
 import type { RegenmonData } from '@/lib/regenmon-types'
 import { t } from '@/lib/i18n'
 import { RegenmonTheme } from '@/components/regenmon-theme'
+import { CeldaIcon } from '@/components/celda-icon'
 
 interface TopBarProps {
   isDark: boolean
@@ -16,6 +17,7 @@ interface TopBarProps {
   archetypeInfo?: string
   onReset?: () => void
   regenmonData?: any // Using any to avoid circular dependency issues if types aren't fully propagated yet, but ideally RegenmonData
+  playerName?: string
 }
 
 export function TopBar({
@@ -25,13 +27,14 @@ export function TopBar({
   onToggleLang,
   archetypeInfo,
   onReset,
-  regenmonData
+  regenmonData,
+  playerName
 }: TopBarProps) {
   const s = t(locale)
   const [showConfirm, setShowConfirm] = useState(false)
   const { user, logout } = usePrivy()
 
-  const displayName = user?.email?.address || user?.wallet?.address || 'User'
+  const displayName = playerName || user?.email?.address || user?.wallet?.address || 'User'
   const shortName = displayName.length > 10 ? `${displayName.slice(0, 4)}...${displayName.slice(-4)}` : displayName
 
   return (
@@ -107,7 +110,7 @@ export function TopBar({
               className={`flex items-center gap-2 mr-2 px-3 py-1 rounded border ${isDark ? 'bg-black/20 border-white/20' : 'bg-gray-200/50 border-black/10'}`}
               title={s.coinsTooltip}
             >
-              <i className="nes-icon coin is-small scale-75"></i>
+              <CeldaIcon className="w-3 h-4" />
               <span
                 className="text-xs sm:text-sm font-bold relative group"
                 style={{ color: isDark ? '#fbbf24' : '#b45309' }} // Darker amber for light theme

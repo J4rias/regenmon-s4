@@ -12,8 +12,16 @@ import { ARCHETYPES } from '@/lib/regenmon-types'
 import { useLanguage } from '@/components/language-provider'
 import { usePrivy } from '@privy-io/react-auth'
 
+import { UserNamePopup } from '@/components/username-popup'
+
 const STORAGE_KEY = 'regenmon-data'
+const USER_SETTINGS_KEY = 'regenmon-user-settings'
 const THEME_KEY = 'regenmon-theme'
+
+interface UserSettings {
+  playerName: string
+  tutorialsSeen: string[]
+}
 
 function GameContent() {
   const [regenmon, setRegenmon] = useState<RegenmonData | null>(null)
@@ -25,6 +33,10 @@ function GameContent() {
 
   // Dynamic storage key based on user ID
   const storageKey = user?.id ? `regenmon-data-${user.id}` : STORAGE_KEY
+  const settingsKey = user?.id ? `${USER_SETTINGS_KEY}-${user.id}` : USER_SETTINGS_KEY
+
+  const [userSettings, setUserSettings] = useState<UserSettings>({ playerName: '', tutorialsSeen: [] })
+  const [hasSkippedName, setHasSkippedName] = useState(false)
 
   // New States for Flow
   const [gameState, setGameState] = useState<'START' | 'LOADING' | 'GAME'>('START')
@@ -53,13 +65,23 @@ function GameContent() {
       setRegenmon(null)
     }
 
+    // Load User Settings
+    const savedSettings = localStorage.getItem(settingsKey)
+    if (savedSettings) {
+      try {
+        setUserSettings(JSON.parse(savedSettings))
+      } catch {
+        // ignore
+      }
+    }
+
     const savedTheme = localStorage.getItem(THEME_KEY)
     if (savedTheme === 'light') {
       setIsDark(false)
     } else {
       setIsDark(true)
     }
-  }, [mounted, user?.id])
+  }, [mounted, user?.id, settingsKey])
 
   useEffect(() => {
     setMounted(true)
@@ -128,6 +150,27 @@ function GameContent() {
     )
   }
 
+
+
+  function handleSaveName(name: string) {
+    const newSettings = { ...userSettings, playerName: name }
+    setUserSettings(newSettings)
+    localStorage.setItem(settingsKey, JSON.stringify(newSettings))
+  }
+
+  function handleSkipName() {
+    setHasSkippedName(true)
+  }
+
+  function handleTutorialSeen(tutorialId: string) {
+    if (userSettings.tutorialsSeen.includes(tutorialId)) return
+    const newSettings = { ...userSettings, tutorialsSeen: [...userSettings.tutorialsSeen, tutorialId] }
+    setUserSettings(newSettings)
+    localStorage.setItem(settingsKey, JSON.stringify(newSettings))
+  }
+
+  // ... (rest of component) ...
+
   return (
     <div className="min-h-screen font-sans">
       {gameState === 'START' && (
@@ -154,10 +197,23 @@ function GameContent() {
             archetypeInfo={archetypeInfo}
             onReset={regenmon ? handleReset : undefined}
             regenmonData={regenmon}
+            playerName={userSettings.playerName}
           />
           <main style={{ flex: 1, overflow: 'auto', minHeight: 0 }}>
             {regenmon ? (
-              <Dashboard locale={locale} data={regenmon} onUpdate={handleUpdate} onReset={handleReset} />
+              <>
+                <Dashboard
+                  locale={locale}
+                  data={regenmon}
+                  onUpdate={handleUpdate}
+                  onReset={handleReset}
+                  userSettings={userSettings}
+                  onTutorialSeen={handleTutorialSeen}
+                />
+                {!userSettings.playerName && !hasSkippedName && (
+                  <UserNamePopup locale={locale} onSave={handleSaveName} onSkip={handleSkipName} />
+                )}
+              </>
             ) : (
               <Incubator locale={locale} onHatch={handleHatch} />
             )}

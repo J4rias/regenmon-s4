@@ -15,12 +15,17 @@ import {
 import type { Locale } from '@/lib/i18n'
 import { t } from '@/lib/i18n'
 import { ChatBox } from '@/components/chat-box'
+import { CeldaIcon } from '@/components/celda-icon'
+import { TutorialPopup } from '@/components/tutorial-popup'
+import { DailyRewardChest } from '@/components/daily-reward-chest'
 
 interface DashboardProps {
   locale: Locale
   data: RegenmonData
   onUpdate: (data: RegenmonData) => void
   onReset: () => void
+  userSettings?: { playerName: string; tutorialsSeen: string[] }
+  onTutorialSeen?: (tutorialId: string) => void
 }
 
 function getEvolutionStage(createdAt: string, bonus: number = 0, gameOverAt?: string): { stage: EvolutionStage; stageIndex: number; timeRemaining: number } {
@@ -62,8 +67,9 @@ interface FloatingText {
   amount: number
 }
 
-export function Dashboard({ locale, data, onUpdate, onReset }: DashboardProps) {
+export function Dashboard({ locale, data, onUpdate, onReset, userSettings, onTutorialSeen }: DashboardProps) {
   const [now, setNow] = useState(Date.now())
+  const [showTutorial, setShowTutorial] = useState(false)
   const [poppedStat, setPoppedStat] = useState<string | null>(null)
   const [isChatOpen, setIsChatOpen] = useState(false)
   const [lastReadMessageCount, setLastReadMessageCount] = useState(data.chatHistory?.length || 0)
@@ -331,7 +337,7 @@ export function Dashboard({ locale, data, onUpdate, onReset }: DashboardProps) {
         // Validation: Sufficient coins
         if (currentCoins < cost) {
           triggerPopup('drain', 0)
-          setSpriteBubbleText(s.needCoins || "Need 10 cells 🪙")
+          setSpriteBubbleText(s.needCoins || "Need 10 cells")
           setShowSpriteBubble(true)
           setTimeout(() => setShowSpriteBubble(true), 10) // Small hack to re-trigger if already open
           setTimeout(() => setShowSpriteBubble(false), 3000)
@@ -395,11 +401,54 @@ export function Dashboard({ locale, data, onUpdate, onReset }: DashboardProps) {
     [data, onUpdate, cooldowns, isGameOver, triggerPopup, s]
   )
 
+  // Check for tutorial on mount
+  useEffect(() => {
+    if (userSettings && !userSettings.tutorialsSeen.includes('intro')) {
+      const timer = setTimeout(() => setShowTutorial(true), 500)
+      return () => clearTimeout(timer)
+    }
+  }, [userSettings])
+
+  const handleCloseTutorial = () => {
+    setShowTutorial(false)
+    if (onTutorialSeen) onTutorialSeen('intro')
+  }
+
+  const handleRewardClaim = (amount: number) => {
+    const currentCoins = data.coins ?? 0
+    const newCoins = currentCoins + amount
+
+    // Add history
+    const newAction: EconomyAction = {
+      id: crypto.randomUUID(),
+      type: 'earn',
+      amount: amount,
+      date: new Date().toISOString()
+    }
+    const newHistory = [newAction, ...(data.history || [])].slice(0, 10)
+
+    onUpdate({
+      ...data,
+      coins: newCoins,
+      history: newHistory
+    })
+
+    // Visual feedback
+    triggerPopup('cells', amount)
+  }
+
   // Force re-render sync with `now`
   void now
 
   return (
     <div className="flex min-h-[calc(100vh-60px)] flex-col items-center px-4 py-6 sm:px-6 sm:py-8">
+      {/* Tutorial Popup */}
+      {showTutorial && <TutorialPopup locale={locale} onClose={handleCloseTutorial} />}
+
+      {/* Daily Reward Chest (Shows when coins are 0) */}
+      {(data.coins ?? 0) <= 0 && (
+        <DailyRewardChest locale={locale} onClaim={handleRewardClaim} />
+      )}
       {/* Floating +10 animation styles */}
       <style>{`
         @keyframes floatUp {
@@ -609,7 +658,7 @@ export function Dashboard({ locale, data, onUpdate, onReset }: DashboardProps) {
                 >
                   <span className="flex items-center gap-1">
                     {ft.amount > 0 ? `+${ft.amount}` : ft.amount}
-                    {ft.stat === 'cells' && <i className="nes-icon coin is-small scale-75"></i>}
+                    {ft.stat === 'cells' && <CeldaIcon className="w-5 h-7" />}
                   </span>
                 </span>
               ))}
@@ -760,7 +809,7 @@ export function Dashboard({ locale, data, onUpdate, onReset }: DashboardProps) {
               </button>
               {/* Tooltip for cost */}
               <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-black text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 border border-white/20">
-                -10 {s.cellName} 🪙
+                -10 {s.cellName} <CeldaIcon className="inline-block w-3 h-4 -mt-1" />
               </div>
             </div>
           </div>
@@ -825,7 +874,7 @@ export function Dashboard({ locale, data, onUpdate, onReset }: DashboardProps) {
                 data.history.map((action) => (
                   <div key={action.id} className="flex justify-between items-center text-[10px] sm:text-xs border-b border-gray-700 pb-1 last:border-0">
                     <span className="flex items-center gap-1">
-                      {action.type === 'feed' ? (s.historyFeed || '🍎 Alimentar') : (s.historyEarn || '🪙 Ganar')}
+                      {action.type === 'feed' ? (s.historyFeed || '🍎 Alimentar') : (s.historyEarn || <span className="flex items-center gap-1"><CeldaIcon className="w-3 h-4" /> {s.historyEarn ? s.historyEarn.replace('🪙 ', '') : 'Ganar'}</span>)}
                     </span>
                     <span className={action.amount < 0 ? 'text-red-400' : 'text-green-400'}>
                       {action.amount > 0 ? `+${action.amount}` : action.amount} {s.cellName}
