@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import { Press_Start_2P } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
+import Providers from './providers'
 
 const pressStart2P = Press_Start_2P({
   weight: '400',
@@ -52,7 +53,9 @@ export default function RootLayout({
         />
       </head>
       <body className={`${pressStart2P.variable} font-sans antialiased`}>
-        {children}
+        <Providers>
+          {children}
+        </Providers>
         <Analytics />
       </body>
     </html>
