@@ -139,15 +139,16 @@ export function ChatBox({ data, locale, onUpdate, isGameOver, isOpen, onTypingCh
         const currentSession = sessionCount + 1
         setSessionCount(currentSession)
 
-        let energyCost = 0
+        // New Tiered Formula:
+        // 1-5 msgs: -3 energy
+        // 6-15 msgs: -4 energy
+        // >15 msgs: -5 energy
+        let baseCost = 3
+        if (currentSession > 15) baseCost = 5
+        else if (currentSession > 5) baseCost = 4
 
-        // Rule 1: Session Length (First 3 msgs free, then progressive penalty)
-        if (currentSession > 8) energyCost += 5
-        else if (currentSession > 3) energyCost += 2
-
-        // Rule 2: Message Length (>50 chars penalty)
-        if (inputValue.length > 100) energyCost += 3
-        else if (inputValue.length > 50) energyCost += 1
+        const lengthPenalty = inputValue.length > 50 ? 2 : 0
+        const energyCost = baseCost + lengthPenalty
 
         const newStats = { ...data.stats }
         newStats.happiness = Math.min(100, newStats.happiness + 5)

@@ -58,6 +58,7 @@ interface FloatingText {
   stat: string
   color: string
   x: number
+  amount: number
 }
 
 export function Dashboard({ locale, data, onUpdate, onReset }: DashboardProps) {
@@ -81,9 +82,65 @@ export function Dashboard({ locale, data, onUpdate, onReset }: DashboardProps) {
   const drainTickRef = useRef(0)
   const dataRef = useRef(data)
   dataRef.current = data
+  const prevStatsRef = useRef(data.stats)
 
   const archetype = ARCHETYPES.find((a) => a.id === data.type)!
   const s = t(locale)
+
+  // Floating text helper
+  const triggerPopup = useCallback((stat: keyof typeof STAT_COLORS | 'drain', amount: number) => {
+    const id = floatingIdRef.current++
+    const randomX = Math.random() * 60 - 30
+    const color = stat === 'drain' ? '#cd5c5c' : STAT_COLORS[stat]
+    setFloatingTexts((prev: any) => [...prev, { id, stat, color, x: randomX, amount }])
+    setTimeout(() => {
+      setFloatingTexts((prev: any) => prev.filter((f: any) => f.id !== id))
+    }, 1200)
+  }, [])
+
+  // Sync popups with stat changes
+  useEffect(() => {
+    const prev = prevStatsRef.current
+    const curr = data.stats
+
+    // Happiness changed
+    if (curr.happiness !== prev.happiness) {
+      const diff = curr.happiness - prev.happiness
+      if (diff > 0) {
+        triggerPopup('happiness', diff)
+        setPoppedStat('happiness')
+        setTimeout(() => setPoppedStat(null), 400)
+      }
+    }
+
+    // Energy changed
+    if (curr.energy !== prev.energy) {
+      const diff = curr.energy - prev.energy
+      if (diff > 0) {
+        triggerPopup('energy', diff)
+        setPoppedStat('energy')
+        setTimeout(() => setPoppedStat(null), 400)
+      } else if (diff < -1) {
+        // Only trigger popup if drain is greater than 1 (i.e. chat drain)
+        // Passive drain of -1 is silent (handled by the red -5 popup)
+        triggerPopup('energy', diff)
+        setPoppedStat('energy')
+        setTimeout(() => setPoppedStat(null), 400)
+      }
+    }
+
+    // Hunger changed
+    if (curr.hunger !== prev.hunger) {
+      const diff = curr.hunger - prev.hunger
+      if (diff > 0) {
+        triggerPopup('hunger', diff)
+        setPoppedStat('hunger')
+        setTimeout(() => setPoppedStat(null), 400)
+      }
+    }
+
+    prevStatsRef.current = curr
+  }, [data.stats, triggerPopup])
 
   // Tick every second for the timer
   useEffect(() => {
@@ -192,12 +249,7 @@ export function Dashboard({ locale, data, onUpdate, onReset }: DashboardProps) {
         // Every 5 drain ticks, show a floating "-5" popup
         if (drainTickRef.current >= 5) {
           drainTickRef.current = 0
-          const id = floatingIdRef.current++
-          const randomX = Math.random() * 60 - 30
-          setFloatingTexts((prev: any) => [...prev, { id, stat: 'drain', color: '#cd5c5c', x: randomX }])
-          setTimeout(() => {
-            setFloatingTexts((prev: any) => prev.filter((f: any) => f.id !== id))
-          }, 1200)
+          triggerPopup('drain', -5)
         }
         const allZero = newStats.happiness <= 0 && newStats.energy <= 0 && newStats.hunger <= 0
         let gameOverAt = current.gameOverAt
@@ -235,18 +287,6 @@ export function Dashboard({ locale, data, onUpdate, onReset }: DashboardProps) {
       const newStats = { ...data.stats }
       newStats[stat] = Math.min(100, Math.max(0, newStats[stat] + amount))
       onUpdate({ ...data, stats: newStats })
-
-      // Pop animation on stat bar
-      setPoppedStat(stat)
-      setTimeout(() => setPoppedStat(null), 400)
-
-      // Floating +10 text
-      const id = floatingIdRef.current++
-      const randomX = Math.random() * 60 - 30
-      setFloatingTexts((prev: any) => [...prev, { id, stat, color: STAT_COLORS[stat], x: randomX }])
-      setTimeout(() => {
-        setFloatingTexts((prev: any) => prev.filter((f: any) => f.id !== id))
-      }, 1200)
 
       // Start cooldown
       setCooldowns((prev: any) => ({ ...prev, [stat]: true }))
@@ -469,7 +509,7 @@ export function Dashboard({ locale, data, onUpdate, onReset }: DashboardProps) {
                     zIndex: 10,
                   }}
                 >
-                  {ft.stat === 'drain' ? '-5' : '+10'}
+                  {ft.amount > 0 ? `+${ft.amount}` : ft.amount}
                 </span>
               ))}
             </div>
