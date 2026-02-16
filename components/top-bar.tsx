@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Sun, Moon, LogOut } from 'lucide-react'
 import { usePrivy } from '@privy-io/react-auth'
 import type { Locale } from '@/lib/i18n'
+import type { RegenmonData } from '@/lib/regenmon-types'
 import { t } from '@/lib/i18n'
 import { RegenmonTheme } from '@/components/regenmon-theme'
 
@@ -14,6 +15,7 @@ interface TopBarProps {
   onToggleLang: () => void
   archetypeInfo?: string
   onReset?: () => void
+  regenmonData?: any // Using any to avoid circular dependency issues if types aren't fully propagated yet, but ideally RegenmonData
 }
 
 export function TopBar({
@@ -22,7 +24,8 @@ export function TopBar({
   onToggleTheme,
   onToggleLang,
   archetypeInfo,
-  onReset
+  onReset,
+  regenmonData
 }: TopBarProps) {
   const s = t(locale)
   const [showConfirm, setShowConfirm] = useState(false)
@@ -97,6 +100,17 @@ export function TopBar({
 
         {/* Right: Actions (User Info, Reset & Logout) */}
         <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', flexShrink: 0, gap: '8px' }}>
+
+          {/* Coin Display */}
+          {regenmonData && (
+            <div className="flex items-center gap-2 mr-2 px-3 py-1 bg-black/20 rounded border border-white/20" title="Cells (Moneda)">
+              <i className="nes-icon coin is-small scale-75"></i>
+              <span className="text-xs sm:text-sm font-bold relative group" style={{ color: '#fbbf24' }}>
+                {regenmonData.coins ?? 0}
+              </span>
+            </div>
+          )}
+
           <div className="hidden sm:flex items-center gap-2 px-2 py-1 border-2 border-dashed border-gray-500 rounded text-[10px]" style={{ color: 'var(--foreground)', height: '35px' }}>
             <span title={displayName}>{shortName}</span>
           </div>

@@ -20,21 +20,31 @@ function GameContent() {
   const [isDark, setIsDark] = useState(true)
   // Use global language state
   const { locale, toggleLang } = useLanguage()
-  const { authenticated } = usePrivy()
+  const { authenticated, user } = usePrivy()
   const [mounted, setMounted] = useState(false)
+
+  // Dynamic storage key based on user ID
+  const storageKey = user?.id ? `regenmon-data-${user.id}` : STORAGE_KEY
 
   // New States for Flow
   const [gameState, setGameState] = useState<'START' | 'LOADING' | 'GAME'>('START')
 
+  // Load data when mounted or user changes
   useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY)
+    if (!mounted) return
+
+    const key = user?.id ? `regenmon-data-${user.id}` : STORAGE_KEY
+    const saved = localStorage.getItem(key)
+
     if (saved) {
       try {
         setRegenmon(JSON.parse(saved))
-        // setGameState('GAME') // Removed to ensure Start Screen is shown for Login
       } catch {
-        localStorage.removeItem(STORAGE_KEY)
+        localStorage.removeItem(key)
+        setRegenmon(null)
       }
+    } else {
+      setRegenmon(null)
     }
 
     const savedTheme = localStorage.getItem(THEME_KEY)
@@ -43,16 +53,17 @@ function GameContent() {
     } else {
       setIsDark(true)
     }
+  }, [mounted, user?.id])
 
-    // Language loading is handled by LanguageProvider
-
+  useEffect(() => {
     setMounted(true)
   }, [])
 
   useEffect(() => {
     if (mounted && !authenticated && gameState !== 'START') {
       setGameState('START')
-      localStorage.removeItem(STORAGE_KEY)
+      // Don't remove storage on logout, just reset state
+      setRegenmon(null)
     }
   }, [mounted, authenticated, gameState])
 
@@ -70,17 +81,17 @@ function GameContent() {
   // Language side effect is handled by LanguageProvider
 
   function handleHatch(data: RegenmonData) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
+    localStorage.setItem(storageKey, JSON.stringify(data))
     setRegenmon(data)
   }
 
   function handleUpdate(data: RegenmonData) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
+    localStorage.setItem(storageKey, JSON.stringify(data))
     setRegenmon(data)
   }
 
   function handleReset() {
-    localStorage.removeItem(STORAGE_KEY)
+    localStorage.removeItem(storageKey)
     setRegenmon(null)
   }
 
@@ -136,6 +147,7 @@ function GameContent() {
             onToggleLang={toggleLang}
             archetypeInfo={archetypeInfo}
             onReset={regenmon ? handleReset : undefined}
+            regenmonData={regenmon}
           />
           <main style={{ flex: 1, overflow: 'auto', minHeight: 0 }}>
             {regenmon ? (

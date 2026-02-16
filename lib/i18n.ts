@@ -53,6 +53,9 @@ const strings = {
     closeChat: 'Close Chat',
     memorySaved: 'Memory saved',
     memoryRecalled: 'Memory recalled',
+    // Economy
+    needCoins: 'Need 10 cells 🪙',
+    historyTitle: 'History',
   },
   es: {
     title: 'Regenmon',
@@ -104,6 +107,9 @@ const strings = {
     closeChat: 'Cerrar Chat',
     memorySaved: 'Memoria guardada',
     memoryRecalled: 'Memoria recordada',
+    // Economy
+    needCoins: 'Necesitas 10 celdas 🪙',
+    historyTitle: 'Historial',
   },
 } as const
 

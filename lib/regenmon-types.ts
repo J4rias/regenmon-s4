@@ -26,11 +26,20 @@ export interface RegenmonData {
   name: string
   type: ArchetypeId
   stats: RegenmonStats
+  coins: number
   createdAt: string
   evolutionBonus?: number // accumulated time bonus/penalty in ms
   gameOverAt?: string // timestamp when game over occurred
   chatHistory?: ChatMessage[]
   memories?: string[]
+  history?: EconomyAction[]
+}
+
+export interface EconomyAction {
+  id: string
+  type: 'feed' | 'earn'
+  amount: number
+  date: string
 }
 
 export interface ChatMessage {

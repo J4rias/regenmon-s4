@@ -10,6 +10,7 @@ import {
   EVOLUTION_INTERVAL_MS,
   type RegenmonData,
   type EvolutionStage,
+  type EconomyAction,
 } from '@/lib/regenmon-types'
 import type { Locale } from '@/lib/i18n'
 import { t } from '@/lib/i18n'
@@ -300,10 +301,63 @@ export function Dashboard({ locale, data, onUpdate, onReset }: DashboardProps) {
       // Don't allow if on cooldown or stat is maxed
       if (cooldowns[stat] || data.stats[stat] >= 100 || isGameOver) return
 
-      const amount = 10
-      const newStats = { ...data.stats }
-      newStats[stat] = Math.min(100, Math.max(0, newStats[stat] + amount))
-      onUpdate({ ...data, stats: newStats })
+      // Economy Check for Hunger (Feeding)
+      if (stat === 'hunger') {
+        const cost = 10
+        const currentCoins = data.coins ?? 0
+
+        // Validation: Sufficient coins
+        if (currentCoins < cost) {
+          triggerPopup('drain', 0) // Reuse drain color for error visual if needed, or just relying on UI feedback
+          // Show tooltip or message: "Necesitas 10 celdas 🪙"
+          setSpriteBubbleText(s.needCoins || "Need 10 cells 🪙")
+          setShowSpriteBubble(true)
+          setTimeout(() => setShowSpriteBubble(false), 3000)
+          return
+        }
+
+        // Proceed with feeding
+        const amount = 10
+        const newStats = { ...data.stats }
+        newStats[stat] = Math.min(100, Math.max(0, newStats[stat] + amount))
+
+        // Deduct coins
+        const newCoins = currentCoins - cost
+
+        // Add history
+        const newAction: EconomyAction = {
+          id: crypto.randomUUID(),
+          type: 'feed',
+          amount: -cost,
+          date: new Date().toISOString()
+        }
+
+        const newHistory = [newAction, ...(data.history || [])].slice(0, 10)
+
+        // Show "Processing..." (simulated by short delay or just immediate feedback)
+        // For this task, we'll do immediate update but show visual feedback
+
+        // Trigger floating text for cost
+        triggerPopup('drain', -cost) // Using drain color (red) for cost, or valid 'drain' type
+
+        // Trigger generic "Success" message via sprite or toast
+        setSpriteBubbleText("¡Ñam ñam! 😋")
+        setShowSpriteBubble(true)
+        setTimeout(() => setShowSpriteBubble(false), 2000)
+
+        onUpdate({
+          ...data,
+          stats: newStats,
+          coins: newCoins,
+          history: newHistory
+        })
+      } else {
+        // Standard logic for other stats (no cost yet)
+        const amount = 10
+        const newStats = { ...data.stats }
+        newStats[stat] = Math.min(100, Math.max(0, newStats[stat] + amount))
+        onUpdate({ ...data, stats: newStats })
+      }
 
       // Start cooldown
       setCooldowns((prev: any) => ({ ...prev, [stat]: true }))
@@ -311,7 +365,7 @@ export function Dashboard({ locale, data, onUpdate, onReset }: DashboardProps) {
         setCooldowns((prev: any) => ({ ...prev, [stat]: false }))
       }, 3000)
     },
-    [data, onUpdate, cooldowns, isGameOver]
+    [data, onUpdate, cooldowns, isGameOver, triggerPopup, s]
   )
 
   // Force re-render sync with `now`
@@ -661,18 +715,24 @@ export function Dashboard({ locale, data, onUpdate, onReset }: DashboardProps) {
             </button>
 
             {/* Feed button (Hunger) */}
-            <button
-              type="button"
-              className={`nes-btn is-success hover-lift btn-press ${cooldowns.hunger || data.stats.hunger >= 100 || isGameOver ? 'btn-cooldown' : ''}`}
-              onClick={() => addStat('hunger')}
-              disabled={cooldowns.hunger || data.stats.hunger >= 100 || isGameOver}
-              style={{ fontSize: '11px', padding: '4px 16px', height: '56px', display: 'inline-flex', alignItems: 'center' }}
-            >
-              <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <i className={`nes-icon like is-small ${data.stats.hunger > 50 ? '' : 'is-empty'}`} />
-                {s.hunger}
-              </span>
-            </button>
+            <div className="relative group">
+              <button
+                type="button"
+                className={`nes-btn is-success hover-lift btn-press ${cooldowns.hunger || data.stats.hunger >= 100 || isGameOver || (data.coins ?? 0) < 10 ? 'btn-cooldown' : ''}`}
+                onClick={() => addStat('hunger')}
+                disabled={cooldowns.hunger || data.stats.hunger >= 100 || isGameOver}
+                style={{ fontSize: '11px', padding: '4px 16px', height: '56px', display: 'inline-flex', alignItems: 'center' }}
+              >
+                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <i className={`nes-icon like is-small ${data.stats.hunger > 50 ? '' : 'is-empty'}`} />
+                  {s.hunger}
+                </span>
+              </button>
+              {/* Tooltip for cost */}
+              <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-black text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 border border-white/20">
+                -10 Cells 🪙
+              </div>
+            </div>
           </div>
         </div>
 
@@ -719,6 +779,37 @@ export function Dashboard({ locale, data, onUpdate, onReset }: DashboardProps) {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* ITEM 5: History Panel (Collapsible) */}
+        <div
+          className="nes-container is-rounded w-full"
+          style={{ backgroundColor: 'var(--card)', color: 'var(--foreground)' }}
+        >
+          <details>
+            <summary className="text-xs sm:text-sm cursor-pointer outline-none select-none" style={{ color: 'var(--foreground)' }}>
+              📜 {s.historyTitle || "Historial"}
+            </summary>
+            <div className="mt-4 flex flex-col gap-2 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
+              {data.history && data.history.length > 0 ? (
+                data.history.map((action) => (
+                  <div key={action.id} className="flex justify-between items-center text-[10px] sm:text-xs border-b border-gray-700 pb-1 last:border-0">
+                    <span className="flex items-center gap-1">
+                      {action.type === 'feed' ? '🍎 Alimentar' : '🪙 Ganar'}
+                    </span>
+                    <span className={action.amount < 0 ? 'text-red-400' : 'text-green-400'}>
+                      {action.amount > 0 ? `+${action.amount}` : action.amount} Cells
+                    </span>
+                    <span className="text-gray-400">
+                      {new Date(action.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                ))
+              ) : (
+                <p className="text-[10px] text-gray-500 italic text-center py-2">No hay actividad reciente</p>
+              )}
+            </div>
+          </details>
         </div>
       </div>
     </div>
