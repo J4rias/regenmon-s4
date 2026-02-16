@@ -26,6 +26,7 @@ const strings = {
     archMineralDesc: 'Crystallized by residual radiation.',
     // Dashboard
     resetButton: 'Reset',
+    logoutButton: 'Logout',
     statsTitle: 'Statistics',
     happiness: 'Happiness',
     energy: 'Energy',
@@ -76,6 +77,7 @@ const strings = {
     archMineralDesc: 'Cristalizado por la radiacion residual.',
     // Dashboard
     resetButton: 'Reiniciar',
+    logoutButton: 'Salir',
     statsTitle: 'Estadisticas',
     happiness: 'Felicidad',
     energy: 'Energia',

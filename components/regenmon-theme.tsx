@@ -10,7 +10,7 @@ export function RegenmonTheme() {
       type="button"
       onClick={toggleMusic}
       className="nes-btn btn-press"
-      style={{ fontSize: '10px', margin: 0 }}
+      style={{ fontSize: '10px', margin: 0, width: '40px', height: '35px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
       aria-label={isPlaying ? 'Stop music' : 'Play music'}
     >
       {isPlaying ? (

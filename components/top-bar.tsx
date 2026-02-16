@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { Sun, Moon } from 'lucide-react'
+import { Sun, Moon, LogOut } from 'lucide-react'
+import { usePrivy } from '@privy-io/react-auth'
 import type { Locale } from '@/lib/i18n'
 import { t } from '@/lib/i18n'
 import { RegenmonTheme } from '@/components/regenmon-theme'
@@ -25,10 +26,13 @@ export function TopBar({
 }: TopBarProps) {
   const s = t(locale)
   const [showConfirm, setShowConfirm] = useState(false)
+  const { user, logout } = usePrivy()
+
+  const displayName = user?.email?.address || user?.wallet?.address || 'User'
+  const shortName = displayName.length > 10 ? `${displayName.slice(0, 4)}...${displayName.slice(-4)}` : displayName
 
   return (
     <>
-      {/* Only override NES.css margin on buttons inside the header */}
       <style>{`
         .topbar-header .nes-btn { margin: 0 !important; }
         .topbar-header p { margin: 0 !important; }
@@ -47,13 +51,13 @@ export function TopBar({
           backgroundColor: 'var(--card)',
         }}
       >
-        {/* Left: Toggles - inline flex for layout only */}
+        {/* Left: Toggles and User Info */}
         <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
           <button
             type="button"
             onClick={onToggleLang}
             className="nes-btn"
-            style={{ fontSize: '10px' }}
+            style={{ fontSize: '10px', width: '40px', height: '35px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           >
             {locale === 'en' ? 'ES' : 'EN'}
           </button>
@@ -61,14 +65,15 @@ export function TopBar({
             type="button"
             onClick={onToggleTheme}
             className="nes-btn"
-            style={{ fontSize: '10px' }}
+            style={{ fontSize: '10px', width: '40px', height: '35px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           >
             {isDark ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
           </button>
+
           <RegenmonTheme />
         </div>
 
-        {/* Center: Archetype Info */}
+        {/* Center: Archetype Info (Hidden on very small screens if needed, or truncated) */}
         <div style={{ display: 'flex', flex: '1 1 0%', minWidth: 0, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '0 8px' }}>
           {archetypeInfo && (
             <p
@@ -90,8 +95,12 @@ export function TopBar({
           )}
         </div>
 
-        {/* Right: Reset Button */}
-        <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', flexShrink: 0 }}>
+        {/* Right: Actions (User Info, Reset & Logout) */}
+        <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', flexShrink: 0, gap: '8px' }}>
+          <div className="hidden sm:flex items-center gap-2 px-2 py-1 border-2 border-dashed border-gray-500 rounded text-[10px]" style={{ color: 'var(--foreground)', height: '35px' }}>
+            <span title={displayName}>{shortName}</span>
+          </div>
+
           {onReset && (
             <button
               type="button"
@@ -102,6 +111,17 @@ export function TopBar({
               {s.resetButton}
             </button>
           )}
+
+          <button
+            type="button"
+            className="nes-btn is-warning"
+            onClick={logout}
+            style={{ fontSize: '10px', display: 'flex', alignItems: 'center', gap: '4px' }}
+            title={s.logoutButton}
+          >
+            <LogOut size={12} />
+            {s.logoutButton}
+          </button>
         </div>
       </header>
 

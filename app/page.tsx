@@ -9,8 +9,8 @@ import { StartScreen } from '@/components/start-screen'
 import { LoadingScreen } from '@/components/loading-screen'
 import type { RegenmonData } from '@/lib/regenmon-types'
 import { ARCHETYPES } from '@/lib/regenmon-types'
-import type { Locale } from '@/lib/i18n'
-import { LANG_KEY } from '@/lib/i18n'
+import { useLanguage } from '@/components/language-provider'
+import { usePrivy } from '@privy-io/react-auth'
 
 const STORAGE_KEY = 'regenmon-data'
 const THEME_KEY = 'regenmon-theme'
@@ -18,7 +18,9 @@ const THEME_KEY = 'regenmon-theme'
 function GameContent() {
   const [regenmon, setRegenmon] = useState<RegenmonData | null>(null)
   const [isDark, setIsDark] = useState(true)
-  const [locale, setLocale] = useState<Locale>('en')
+  // Use global language state
+  const { locale, toggleLang } = useLanguage()
+  const { authenticated } = usePrivy()
   const [mounted, setMounted] = useState(false)
 
   // New States for Flow
@@ -29,7 +31,7 @@ function GameContent() {
     if (saved) {
       try {
         setRegenmon(JSON.parse(saved))
-        setGameState('GAME')
+        // setGameState('GAME') // Removed to ensure Start Screen is shown for Login
       } catch {
         localStorage.removeItem(STORAGE_KEY)
       }
@@ -42,15 +44,17 @@ function GameContent() {
       setIsDark(true)
     }
 
-    const savedLang = localStorage.getItem(LANG_KEY)
-    if (savedLang === 'es') {
-      setLocale('es')
-    } else {
-      setLocale('en')
-    }
+    // Language loading is handled by LanguageProvider
 
     setMounted(true)
   }, [])
+
+  useEffect(() => {
+    if (mounted && !authenticated && gameState !== 'START') {
+      setGameState('START')
+      localStorage.removeItem(STORAGE_KEY)
+    }
+  }, [mounted, authenticated, gameState])
 
   useEffect(() => {
     if (!mounted) return
@@ -63,11 +67,7 @@ function GameContent() {
     localStorage.setItem(THEME_KEY, isDark ? 'dark' : 'light')
   }, [isDark, mounted])
 
-  useEffect(() => {
-    if (!mounted) return
-    document.documentElement.lang = locale
-    localStorage.setItem(LANG_KEY, locale)
-  }, [locale, mounted])
+  // Language side effect is handled by LanguageProvider
 
   function handleHatch(data: RegenmonData) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
@@ -88,9 +88,7 @@ function GameContent() {
     setIsDark((prev) => !prev)
   }
 
-  function toggleLang() {
-    setLocale((prev) => (prev === 'en' ? 'es' : 'en'))
-  }
+  // toggleLang is from context now
 
   function handleStart() {
     setGameState('LOADING')

@@ -1,8 +1,10 @@
 'use client'
 
-import { Sun, Moon, Volume2, VolumeX, Globe } from 'lucide-react'
+import { useEffect } from 'react'
+import { Sun, Moon, Volume2, VolumeX, Globe, LogOut } from 'lucide-react'
 import { useMusic } from '@/components/music-provider'
 import type { Locale } from '@/lib/i18n'
+import { usePrivy } from '@privy-io/react-auth'
 
 interface StartScreenProps {
     onStart: () => void
@@ -14,6 +16,13 @@ interface StartScreenProps {
 
 export function StartScreen({ onStart, isDark, toggleTheme, locale, toggleLang }: StartScreenProps) {
     const { isPlaying, toggleMusic } = useMusic()
+    const { login, authenticated, ready, logout } = usePrivy()
+
+    useEffect(() => {
+        if (ready && authenticated) {
+            onStart()
+        }
+    }, [ready, authenticated, onStart])
 
     // Common button class for uniform size and centering
     // flex-col, items-center, justify-center ensures content is centered both horizontally and vertically
@@ -72,13 +81,30 @@ export function StartScreen({ onStart, isDark, toggleTheme, locale, toggleLang }
                     </button>
                 </div>
 
-                {/* Continue Button */}
+                {/* Continue / Login Button */}
                 <button
-                    onClick={onStart}
-                    className="nes-btn mt-8 px-16 py-6 text-2xl tracking-wider animate-bounce w-full max-w-md shadow-lg flex items-center justify-center"
+                    onClick={authenticated ? onStart : login}
+                    disabled={!ready}
+                    className={`nes-btn mt-8 px-16 py-6 text-2xl tracking-wider animate-bounce w-full max-w-md shadow-lg flex items-center justify-center ${!ready ? 'is-disabled' : 'is-primary'}`}
                 >
-                    {locale === 'en' ? 'CONTINUE' : 'CONTINUAR'}
+                    {!ready
+                        ? (locale === 'en' ? 'LOADING...' : 'CARGANDO...')
+                        : authenticated
+                            ? (locale === 'en' ? 'CONTINUE' : 'CONTINUAR')
+                            : (locale === 'en' ? 'LOGIN' : 'ENTRAR')
+                    }
                 </button>
+
+                {/* Logout Option (only if authenticated) */}
+                {authenticated && (
+                    <button
+                        onClick={logout}
+                        className="text-xs text-gray-400 hover:text-white underline mt-4 flex items-center gap-2"
+                    >
+                        <LogOut size={14} />
+                        {locale === 'en' ? 'Logout' : 'Cerrar Sesión'}
+                    </button>
+                )}
             </div>
 
             <style jsx>{`
