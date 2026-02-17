@@ -5,12 +5,7 @@ import { LanguageProvider } from '@/components/language-provider';
 
 export default function Providers({ children }: { children: React.ReactNode }) {
     const appId = process.env.NEXT_PUBLIC_PRIVY_APP_ID;
-
-    console.log("[v0] Privy App ID:", appId, "Type:", typeof appId, "Length:", appId?.length);
-
     const isValidAppId = appId && appId.trim().length > 0 && appId !== 'undefined';
-
-    console.log("[v0] Is valid app ID:", isValidAppId);
 
     if (isValidAppId) {
         return (
@@ -37,7 +32,6 @@ export default function Providers({ children }: { children: React.ReactNode }) {
         );
     }
 
-    console.log("[v0] Rendering without Privy provider");
     return (
         <LanguageProvider>
             {children}
