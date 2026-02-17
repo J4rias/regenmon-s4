@@ -499,10 +499,14 @@ export function Dashboard({ locale, data, onUpdate, onReset, userSettings, onTut
     if (onTutorialSeen) onTutorialSeen('intro')
   }
 
-  const handleUnlockReward = () => {
+  const handleUnlockReward = useCallback(() => {
     setIsRewardUnlocked(true)
     setIsChatOpen(false) // Close chat to show chest
-  }
+  }, [])
+
+  const handleResetTutorial = useCallback(() => {
+    setShowTutorial(true)
+  }, [])
 
   const handleRewardClaim = (amount: number) => {
     const latest = dataRef.current
@@ -849,7 +853,7 @@ export function Dashboard({ locale, data, onUpdate, onReset, userSettings, onTut
           }}
           className="chat-overlay-responsive"
         >
-          <ChatBox data={data} locale={locale} onUpdate={onUpdate} isGameOver={isGameOver} isOpen={isChatOpen} onTypingChange={handleTypingChange} onUnlockReward={handleUnlockReward} />
+          <ChatBox data={data} locale={locale} onUpdate={onUpdate} isGameOver={isGameOver} isOpen={isChatOpen} onTypingChange={handleTypingChange} onUnlockReward={handleUnlockReward} onResetTutorial={handleResetTutorial} />
         </div>
 
         {/* ITEM 3: Action Buttons */}

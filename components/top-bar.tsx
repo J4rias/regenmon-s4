@@ -58,7 +58,7 @@ export function TopBar({
         }}
       >
         {/* Left: Toggles and User Info */}
-        <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+        <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '8px', flex: '1 1 0%', justifyContent: 'flex-start' }}>
           <button
             type="button"
             onClick={onToggleLang}
@@ -79,8 +79,8 @@ export function TopBar({
           <RegenmonTheme />
         </div>
 
-        {/* Center: Archetype Info (Hidden on very small screens if needed, or truncated) */}
-        <div style={{ display: 'flex', flex: '1 1 0%', minWidth: 0, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '0 8px' }}>
+        {/* Center: Archetype Info */}
+        <div style={{ display: 'flex', flexShrink: 0, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '0 8px' }}>
           {archetypeInfo && (
             <p
               style={{
@@ -102,7 +102,8 @@ export function TopBar({
         </div>
 
         {/* Right: Actions (User Info, Reset & Logout) */}
-        <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', flexShrink: 0, gap: '8px' }}>
+        <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', flex: '1 1 0%', gap: '8px' }}>
+
 
           {/* Coin Display */}
           {regenmonData && (

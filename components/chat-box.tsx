@@ -12,9 +12,10 @@ interface ChatBoxProps {
     isOpen: boolean
     onTypingChange?: (isTyping: boolean) => void
     onUnlockReward: () => void
+    onResetTutorial?: () => void
 }
 
-export function ChatBox({ data, locale, onUpdate, isGameOver, isOpen, onTypingChange, onUnlockReward }: ChatBoxProps) {
+export function ChatBox({ data, locale, onUpdate, isGameOver, isOpen, onTypingChange, onUnlockReward, onResetTutorial }: ChatBoxProps) {
     const [inputValue, setInputValue] = useState('')
     const [messages, setMessages] = useState<ChatMessage[]>(data.chatHistory || [])
     const [memories, setMemories] = useState<string[]>(data.memories || [])
@@ -221,45 +222,63 @@ export function ChatBox({ data, locale, onUpdate, isGameOver, isOpen, onTypingCh
             let responseText = ''
             let shouldUpdate = false
             let newData = { ...currentData }
+            let isHidden = true // Default to hidden for test commands
 
             if (cmd === '/cells') {
                 newData.coins = (newData.coins ?? 0) + 100
                 shouldUpdate = true
-                responseText = locale === 'es' ? '¡100 celdas añadidas!' : '100 cells added!'
+                // No response text, keeping it silent/hidden as requested
             }
             else if (cmd === '/happy') {
                 newData.stats = { ...newData.stats, happiness: 100 }
                 shouldUpdate = true
-                responseText = locale === 'es' ? '¡Felicidad al máximo!' : 'Happiness maxed out!'
             }
             else if (cmd === '/energy') {
                 newData.stats = { ...newData.stats, energy: 100 }
                 shouldUpdate = true
-                responseText = locale === 'es' ? '¡Energía al máximo!' : 'Energy maxed out!'
             }
             else if (cmd === '/user') {
-                // Info command, no state change
+                // Info command, no state change, just alert for now or silent
+                // "no deben de quedar registradas en el chat"
+                // We'll use a standard alert for the user info since it can't be in chat
                 const created = new Date(currentData.createdAt).toLocaleDateString()
-                responseText = locale === 'es'
-                    ? `👤 **Usuario**: ${currentData.name}\n🆔 **Tipo**: ${currentData.type}\n💰 **Celdas**: ${currentData.coins}\n📅 **Creado**: ${created}`
-                    : `👤 **User**: ${currentData.name}\n🆔 **Type**: ${currentData.type}\n💰 **Cells**: ${currentData.coins}\n📅 **Created**: ${created}`
+                const info = locale === 'es'
+                    ? `👤 Usuario: ${currentData.name}\n🆔 Tipo: ${currentData.type}\n💰 Celdas: ${currentData.coins}\n📅 Creado: ${created}`
+                    : `👤 User: ${currentData.name}\n🆔 Type: ${currentData.type}\n💰 Cells: ${currentData.coins}\n📅 Created: ${created}`
+                alert(info)
+                setInputValue('')
+                return
+            }
+            else if (cmd === '/tutorial') {
+                if (onResetTutorial) onResetTutorial()
+                setInputValue('')
+                return
             }
             else if (cmd === '/commands') {
+                isHidden = false // This one STAYS in chat
                 responseText = locale === 'es'
-                    ? `🛠️ **Comandos Disponibles**:\n- /cells: +100 celdas\n- /happy: Felicidad 100%\n- /energy: Energía 100%\n- /user: Info del usuario\n- /commands: Esta lista`
-                    : `🛠️ **Available Commands**:\n- /cells: +100 cells\n- /happy: Happiness 100%\n- /energy: Energy 100%\n- /user: User info\n- /commands: This list`
+                    ? `🛠️ **Comandos (Test)**:\n- /cells: +100 celdas\n- /happy: Felicidad 100%\n- /energy: Energía 100%\n- /user: Info usuario (Pop-up)\n- /tutorial: Ver tutorial\n- /commands: Esta lista`
+                    : `🛠️ **Commands (Test)**:\n- /cells: +100 cells\n- /happy: Happiness 100%\n- /energy: Energy 100%\n- /user: User info (Pop-up)\n- /tutorial: Show tutorial\n- /commands: This list`
             }
 
-            if (responseText || shouldUpdate) {
-                if (shouldUpdate) {
-                    onUpdate(newData)
-                }
+            if (shouldUpdate) {
+                onUpdate(newData)
+            }
 
-                // Add system/assistant message with the result
+            // Clear input always
+            setInputValue('')
+
+            // If it's hidden, stop here (don't add to chat history)
+            if (isHidden) {
+                return
+            }
+
+            // Only /commands reaches here
+            if (responseText) {
                 const systemMsg: ChatMessage = {
                     id: Date.now().toString(),
                     role: 'assistant',
-                    content: responseText || (locale === 'es' ? 'Comando ejecutado.' : 'Command executed.'),
+                    content: responseText,
                     timestamp: new Date().toISOString()
                 }
 
@@ -271,10 +290,8 @@ export function ChatBox({ data, locale, onUpdate, isGameOver, isOpen, onTypingCh
                 }
 
                 const newHistory = [...messagesRef.current, userCommandMsg, systemMsg].slice(-20)
-
                 setMessages(newHistory)
                 messagesRef.current = newHistory
-                setInputValue('')
                 return
             }
         }
