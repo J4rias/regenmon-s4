@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Sun, Moon, LogOut, Menu, X } from 'lucide-react'
 import { usePrivy } from '@privy-io/react-auth'
 import type { Locale } from '@/lib/i18n'
@@ -33,7 +33,18 @@ export function TopBar({
   const s = t(locale)
   const [showConfirm, setShowConfirm] = useState(false)
   const [showMobileMenu, setShowMobileMenu] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
   const { user, logout } = usePrivy()
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 640)
+    }
+    
+    handleResize()
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   const displayName = playerName || user?.email?.address || user?.wallet?.address || 'User'
   const shortName = displayName.length > 10 ? `${displayName.slice(0, 4)}...${displayName.slice(-4)}` : displayName
@@ -59,15 +70,17 @@ export function TopBar({
           minHeight: '50px',
         }}
       >
-        {/* Mobile Menu Button */}
-        <button
-          type="button"
-          className="sm:hidden nes-btn flex"
-          onClick={() => setShowMobileMenu(!showMobileMenu)}
-          style={{ fontSize: '10px', width: '40px', height: '35px', padding: 0, alignItems: 'center', justifyContent: 'center' }}
-        >
-          {showMobileMenu ? <X size={20} /> : <Menu size={20} />}
-        </button>
+        {/* Mobile Menu Button - Only visible on mobile */}
+        {isMobile && (
+          <button
+            type="button"
+            className="nes-btn flex"
+            onClick={() => setShowMobileMenu(!showMobileMenu)}
+            style={{ fontSize: '10px', width: '40px', height: '35px', padding: 0, alignItems: 'center', justifyContent: 'center' }}
+          >
+            {showMobileMenu ? <X size={20} /> : <Menu size={20} />}
+          </button>
+        )}
 
         {/* Desktop Left: Toggles and Theme */}
         <div className="hidden sm:flex flex-row" style={{ alignItems: 'center', gap: '8px', flex: '0 0 auto', justifyContent: 'flex-start' }}>
@@ -153,10 +166,10 @@ export function TopBar({
         </div>
       </header>
 
-      {/* Mobile Menu */}
-      {showMobileMenu && (
+      {/* Mobile Menu - Only shown on mobile */}
+      {isMobile && showMobileMenu && (
         <div
-          className="sm:hidden fixed top-14 left-0 right-0 z-30 border-b-2 border-border"
+          className="fixed top-14 left-0 right-0 z-30 border-b-2 border-border"
           style={{
             backgroundColor: 'var(--card)',
             padding: '12px',
