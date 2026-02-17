@@ -18,6 +18,7 @@ import { ChatBox } from '@/components/chat-box'
 import { CeldaIcon } from '@/components/celda-icon'
 import { TutorialPopup } from '@/components/tutorial-popup'
 import { DailyRewardChest } from '@/components/daily-reward-chest'
+import { getRandomFeedingResponse } from '@/lib/feeding-responses'
 
 interface DashboardProps {
   locale: Locale
@@ -412,10 +413,31 @@ export function Dashboard({ locale, data, onUpdate, onReset, userSettings, onTut
           setSpriteBubbleText(s.ready || "✅ ¡Listo!")
 
           // Clear "Listo" after 2 seconds and release cooldown
+          // AND trigger a random feeding response in chat
           setTimeout(() => {
             setShowSpriteBubble(false)
             setSpriteBubbleText("")
             setCooldowns((prev: any) => ({ ...prev, [stat]: false }))
+
+            // --- Feeding Reaction ---
+            const reaction = getRandomFeedingResponse(locale)
+            const reactionMsg: any = { // Using any to avoid strict type issues with imported types if mismatch
+              id: Date.now().toString(),
+              role: 'assistant',
+              content: reaction,
+              timestamp: new Date().toISOString()
+            }
+
+            // We need to fetch the LATEST data again to ensure we don't overwrite history
+            // if a message came in during the 2s wait.
+            const currentAfterWait = dataRef.current
+            const updatedHistory = [...(currentAfterWait.chatHistory || []), reactionMsg].slice(-20)
+
+            onUpdate({
+              ...currentAfterWait,
+              chatHistory: updatedHistory
+            })
+
           }, 2000)
         }, 800)
 
