@@ -267,6 +267,33 @@ export function Dashboard({ locale, data, onUpdate, onReset, userSettings, onTut
         bubbleTimerRef.current = null
       }
     } else if (lastAssistantMessage && lastAssistantMessage.id !== lastShownMessageId) {
+      // --- Play 8-bit notification sound ---
+      const playBeep = () => {
+        try {
+          const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext
+          if (!AudioContextClass) return
+          const ctx = new AudioContextClass()
+          const osc = ctx.createOscillator()
+          const gain = ctx.createGain()
+
+          osc.type = 'square' // 8-bit style
+          osc.frequency.setValueAtTime(523.25, ctx.currentTime) // C5
+          osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.1) // A5
+
+          gain.gain.setValueAtTime(0.1, ctx.currentTime)
+          gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2)
+
+          osc.connect(gain)
+          gain.connect(ctx.destination)
+
+          osc.start()
+          osc.stop(ctx.currentTime + 0.2)
+        } catch (e) {
+          console.error("Audio error", e)
+        }
+      }
+      playBeep()
+
       // If we have a new assistant message and NOT typing anymore
       setLastShownMessageId(lastAssistantMessage.id)
       setSpriteBubbleText(lastAssistantMessage.content)
@@ -962,8 +989,14 @@ export function Dashboard({ locale, data, onUpdate, onReset, userSettings, onTut
                     <div className={`w-24 sm:w-32 text-right font-mono whitespace-nowrap ${action.amount < 0 ? 'text-red-400' : 'text-green-400'}`}>
                       {action.amount > 0 ? `+${action.amount}` : action.amount} {s.cellName}
                     </div>
-                    <div className="w-14 sm:w-20 text-right text-gray-500 text-[9px] ml-4 shrink-0">
-                      {new Date(action.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    <div className="w-20 sm:w-28 text-right text-gray-500 text-[9px] ml-4 shrink-0">
+                      {new Date(action.date).toLocaleString([], {
+                        day: '2-digit',
+                        month: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: false
+                      }).replace(',', '')}
                     </div>
                   </div>
                 ))

@@ -215,15 +215,68 @@ export function ChatBox({ data, locale, onUpdate, isGameOver, isOpen, onTypingCh
 
         const currentData = dataRef.current
 
-        // Easter Egg: /cells
-        if (trimmedInput.toLowerCase() === '/cells') {
-            const newCoins = (currentData.coins ?? 0) + 100
-            onUpdate({
-                ...currentData,
-                coins: newCoins
-            })
-            setInputValue('')
-            return
+        // --- EASTER EGGS ---
+        if (trimmedInput.startsWith('/')) {
+            const cmd = trimmedInput.toLowerCase()
+            let responseText = ''
+            let shouldUpdate = false
+            let newData = { ...currentData }
+
+            if (cmd === '/cells') {
+                newData.coins = (newData.coins ?? 0) + 100
+                shouldUpdate = true
+                responseText = locale === 'es' ? '¡100 celdas añadidas!' : '100 cells added!'
+            }
+            else if (cmd === '/happy') {
+                newData.stats = { ...newData.stats, happiness: 100 }
+                shouldUpdate = true
+                responseText = locale === 'es' ? '¡Felicidad al máximo!' : 'Happiness maxed out!'
+            }
+            else if (cmd === '/energy') {
+                newData.stats = { ...newData.stats, energy: 100 }
+                shouldUpdate = true
+                responseText = locale === 'es' ? '¡Energía al máximo!' : 'Energy maxed out!'
+            }
+            else if (cmd === '/user') {
+                // Info command, no state change
+                const created = new Date(currentData.createdAt).toLocaleDateString()
+                responseText = locale === 'es'
+                    ? `👤 **Usuario**: ${currentData.name}\n🆔 **Tipo**: ${currentData.type}\n💰 **Celdas**: ${currentData.coins}\n📅 **Creado**: ${created}`
+                    : `👤 **User**: ${currentData.name}\n🆔 **Type**: ${currentData.type}\n💰 **Cells**: ${currentData.coins}\n📅 **Created**: ${created}`
+            }
+            else if (cmd === '/commands') {
+                responseText = locale === 'es'
+                    ? `🛠️ **Comandos Disponibles**:\n- /cells: +100 celdas\n- /happy: Felicidad 100%\n- /energy: Energía 100%\n- /user: Info del usuario\n- /commands: Esta lista`
+                    : `🛠️ **Available Commands**:\n- /cells: +100 cells\n- /happy: Happiness 100%\n- /energy: Energy 100%\n- /user: User info\n- /commands: This list`
+            }
+
+            if (responseText || shouldUpdate) {
+                if (shouldUpdate) {
+                    onUpdate(newData)
+                }
+
+                // Add system/assistant message with the result
+                const systemMsg: ChatMessage = {
+                    id: Date.now().toString(),
+                    role: 'assistant',
+                    content: responseText || (locale === 'es' ? 'Comando ejecutado.' : 'Command executed.'),
+                    timestamp: new Date().toISOString()
+                }
+
+                const userCommandMsg: ChatMessage = {
+                    id: Date.now().toString(),
+                    role: 'user',
+                    content: inputValue,
+                    timestamp: new Date().toISOString()
+                }
+
+                const newHistory = [...messagesRef.current, userCommandMsg, systemMsg].slice(-20)
+
+                setMessages(newHistory)
+                messagesRef.current = newHistory
+                setInputValue('')
+                return
+            }
         }
 
         const userMsg: ChatMessage = {
@@ -266,28 +319,54 @@ export function ChatBox({ data, locale, onUpdate, isGameOver, isOpen, onTypingCh
             memories: memories
         })
 
-        const rescueKeywords = locale === 'es'
-            ? ['quiero celdas', 'ganar celdas', 'necesito celdas', 'dame celdas']
-            : ['want cells', 'earn cells', 'need cells', 'give me cells']
+        // --- USER INITIATED RESCUE (FLEXIBLE MATCHING) ---
+        // New Logic: Check for intent + object
+        const targetWord = locale === 'es' ? 'celdas' : 'cells'
+        const intentWords = locale === 'es'
+            ? ['quiero', 'ganar', 'necesito', 'dame', 'conseguir', 'tener']
+            : ['want', 'earn', 'need', 'give', 'get', 'win', 'have']
 
-        if (currentData.coins <= 0 && (currentData.dailyRewardsClaimed ?? 0) < 3 && rescueKeywords.some(k => lowerInput.includes(k))) {
-            const challenge = getRandomChallenge()
-            setCurrentChallenge(challenge)
-            setChallengeState('CHALLENGE')
-            setWrongAttempts(0)
+        const hasTarget = lowerInput.includes(targetWord)
+        const hasIntent = intentWords.some(w => lowerInput.includes(w))
+        const isRescueRequest = hasTarget && hasIntent
 
-            // Optimistic update removed (handled globally)
-            // const newHistory = [...messagesRef.current, userMsg].slice(-20)
-            // setMessages(newHistory)
-            // messagesRef.current = newHistory
-            // setInputValue('')
+        if (isRescueRequest) {
+            // Case 1: Eligible for rescue
+            if (currentData.coins <= 0 && (currentData.dailyRewardsClaimed ?? 0) < 3) {
+                const challenge = getRandomChallenge()
+                setCurrentChallenge(challenge)
+                setChallengeState('CHALLENGE')
+                setWrongAttempts(0)
 
-            setIsTyping(true)
-            setTimeout(() => {
-                addAssistantMessage(locale === 'es' ? "¡Genial! Responde esto para ganar tu recompensa: " + challenge.question_es : "Great! Answer this to earn your reward: " + challenge.question_en)
-                setIsTyping(false)
-            }, 1000)
-            return
+                setIsTyping(true)
+                setTimeout(() => {
+                    addAssistantMessage(locale === 'es' ? "¡Genial! Responde esto para ganar tu recompensa: " + challenge.question_es : "Great! Answer this to earn your reward: " + challenge.question_en)
+                    setIsTyping(false)
+                }, 1000)
+                return
+            }
+            // Case 2: Ineligible - Already has coins
+            else if ((currentData.coins ?? 0) > 0) {
+                setIsTyping(true)
+                setTimeout(() => {
+                    addAssistantMessage(locale === 'es'
+                        ? "¡Aún tienes celdas! Gástalas antes de pedir más."
+                        : "You still have cells! Spend them before asking for more.")
+                    setIsTyping(false)
+                }, 1000)
+                return
+            }
+            // Case 3: Ineligible - Daily limit reached
+            else if ((currentData.dailyRewardsClaimed ?? 0) >= 3) {
+                setIsTyping(true)
+                setTimeout(() => {
+                    addAssistantMessage(locale === 'es'
+                        ? "¡Has alcanzado el límite diario de rescates (3/3)! Vuelve mañana."
+                        : "You've reached the daily rescue limit (3/3)! Come back tomorrow.")
+                    setIsTyping(false)
+                }, 1000)
+                return
+            }
         }
 
         // --- CHALLENGE LOGIC ---
