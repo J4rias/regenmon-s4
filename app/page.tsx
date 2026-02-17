@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Incubator } from '@/components/incubator'
 import { Dashboard } from '@/components/dashboard'
 import { TopBar } from '@/components/top-bar'
@@ -34,6 +34,17 @@ function GameContent() {
   // Dynamic storage key based on user ID
   const storageKey = user?.id ? `regenmon-data-${user.id}` : STORAGE_KEY
   const settingsKey = user?.id ? `${USER_SETTINGS_KEY}-${user.id}` : USER_SETTINGS_KEY
+
+  const lastStorageKeyRef = useRef(storageKey)
+  const lastSettingsKeyRef = useRef(settingsKey)
+
+  // Update refs when keys change
+  useEffect(() => {
+    if (user?.id) {
+      lastStorageKeyRef.current = storageKey
+      lastSettingsKeyRef.current = settingsKey
+    }
+  }, [storageKey, settingsKey, user?.id])
 
   const [userSettings, setUserSettings] = useState<UserSettings>({ playerName: '', tutorialsSeen: [] })
   const [hasSkippedName, setHasSkippedName] = useState(false)
@@ -90,8 +101,12 @@ function GameContent() {
   useEffect(() => {
     if (mounted && !authenticated && gameState !== 'START') {
       setGameState('START')
-      // Don't remove storage on logout, just reset state
+      // Clear storage on logout as requested
+      // Use the last known keys from refs since user object is now null
+      localStorage.removeItem(lastStorageKeyRef.current)
+      localStorage.removeItem(lastSettingsKeyRef.current)
       setRegenmon(null)
+      setUserSettings({ playerName: '', tutorialsSeen: [] })
     }
   }, [mounted, authenticated, gameState])
 
@@ -121,6 +136,13 @@ function GameContent() {
   function handleReset() {
     localStorage.removeItem(storageKey)
     setRegenmon(null)
+    // Also reset intro tutorial status so it shows again for the next Regenmon
+    const newSettings = {
+      ...userSettings,
+      tutorialsSeen: userSettings.tutorialsSeen.filter(t => t !== 'intro')
+    }
+    setUserSettings(newSettings)
+    localStorage.setItem(settingsKey, JSON.stringify(newSettings))
   }
 
   function toggleTheme() {
@@ -201,21 +223,20 @@ function GameContent() {
           />
           <main style={{ flex: 1, overflow: 'auto', minHeight: 0 }}>
             {regenmon ? (
-              <>
-                <Dashboard
-                  locale={locale}
-                  data={regenmon}
-                  onUpdate={handleUpdate}
-                  onReset={handleReset}
-                  userSettings={userSettings}
-                  onTutorialSeen={handleTutorialSeen}
-                />
-                {!userSettings.playerName && !hasSkippedName && (
-                  <UserNamePopup locale={locale} onSave={handleSaveName} onSkip={handleSkipName} />
-                )}
-              </>
+              <Dashboard
+                locale={locale}
+                data={regenmon}
+                onUpdate={handleUpdate}
+                onReset={handleReset}
+                userSettings={userSettings}
+                onTutorialSeen={handleTutorialSeen}
+              />
             ) : (
               <Incubator locale={locale} onHatch={handleHatch} />
+            )}
+
+            {!userSettings.playerName && !hasSkippedName && (
+              <UserNamePopup locale={locale} onSave={handleSaveName} onSkip={handleSkipName} />
             )}
           </main>
         </div>

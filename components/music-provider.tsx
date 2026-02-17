@@ -14,7 +14,7 @@ type MusicContextType = {
 const MusicContext = createContext<MusicContextType | null>(null)
 
 export function MusicProvider({ children }: { children: React.ReactNode }) {
-    const [isPlaying, setIsPlaying] = useState(true)
+    const [isPlaying, setIsPlaying] = useState(false)
     const synthRef = useRef<Tone.PolySynth | null>(null)
     const partRef = useRef<Tone.Part | null>(null)
     const loopRef = useRef<Tone.Loop | null>(null)
@@ -173,7 +173,7 @@ export function MusicProvider({ children }: { children: React.ReactNode }) {
             setIsPlaying(false)
             localStorage.setItem(MUSIC_KEY, 'off')
         } else {
-            localStorage.removeItem(MUSIC_KEY)
+            localStorage.setItem(MUSIC_KEY, 'on')
             startMusic()
         }
     }, [isPlaying, startMusic, disposeAudio])
@@ -184,19 +184,19 @@ export function MusicProvider({ children }: { children: React.ReactNode }) {
         initializedRef.current = true
 
         const savedPref = localStorage.getItem(MUSIC_KEY)
-        if (savedPref === 'off') {
-            setIsPlaying(false)
-        } else {
+        if (savedPref === 'on') {
             // Auto-start attempt
             startMusic().catch(() => {
                 // Autoplay blocked, wait for interaction
                 setIsPlaying(false)
             })
+        } else {
+            setIsPlaying(false)
         }
 
         // Interactions to unlock audio
         const handleInteraction = () => {
-            if (localStorage.getItem(MUSIC_KEY) !== 'off' && !startedRef.current) {
+            if (localStorage.getItem(MUSIC_KEY) === 'on' && !startedRef.current) {
                 startMusic()
             }
             document.removeEventListener('click', handleInteraction)
