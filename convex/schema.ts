@@ -6,6 +6,7 @@ export default defineSchema({
     users: defineTable({
         tokenIdentifier: v.string(), // Privy Auth ID
         name: v.string(),            // Display Name
+        email: v.optional(v.string()), // User's email
         tutorialsSeen: v.array(v.string()), // List of seen tutorial IDs
     }).index("by_token", ["tokenIdentifier"]),
 

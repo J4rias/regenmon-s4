@@ -8,14 +8,17 @@ import { v } from "convex/values";
  */
 export const store = mutation({
     args: {
-        // We don't need to pass tokenIdentifier explicitly, we get it from auth
-        name: v.optional(v.string()), // Optional, only update if provided
+        name: v.optional(v.string()),
+        email: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
         const identity = await ctx.auth.getUserIdentity();
         if (!identity) {
             throw new Error("Called storeUser without authentication present");
         }
+
+        const email = args.email || identity.email || "";
+        const identityName = args.name || identity.name || email || "Explorer";
 
         // Check if we already have this user
         const user = await ctx.db
@@ -26,9 +29,26 @@ export const store = mutation({
             .unique();
 
         if (user !== null) {
-            // Update existing user if name is provided
-            if (args.name && args.name !== user.name) {
-                await ctx.db.patch(user._id, { name: args.name });
+            const updates: any = {};
+
+            // Capture email if we don't have it or if it changed
+            if (email && email !== user.email) {
+                updates.email = email;
+            }
+
+            // Update name logic
+            const isCurrentNameGeneric = !user.name || user.name === "Trainer" || user.name === "Explorer" || user.name === "";
+            const isNewNameProvidedInArgs = args.name && args.name !== user.name;
+
+            if (isNewNameProvidedInArgs) {
+                updates.name = args.name;
+            } else if (isCurrentNameGeneric && identityName !== "Explorer" && identityName !== user.name) {
+                // If the user's name is a generic default, try to upgrade it to their actual name or email
+                updates.name = identityName;
+            }
+
+            if (Object.keys(updates).length > 0) {
+                await ctx.db.patch(user._id, updates);
             }
             return user._id;
         }
@@ -36,7 +56,8 @@ export const store = mutation({
         // Create new user
         return await ctx.db.insert("users", {
             tokenIdentifier: identity.tokenIdentifier,
-            name: args.name || "Trainer", // Default name if not provided (though frontend should enforce)
+            name: identityName,
+            email: email,
             tutorialsSeen: [],
         });
     },

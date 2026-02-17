@@ -86,12 +86,9 @@ export function StartScreen({ onStart, isDark, toggleTheme, locale, toggleLang }
                 {/* Continue / Login Button */}
                 <button
                     onClick={() => {
-                        console.log('Start Button Clicked:', { authenticated, ready });
                         if (authenticated) {
-                            console.log('Calling onStart');
                             onStart();
                         } else {
-                            console.log('Calling login');
                             login();
                         }
                     }}

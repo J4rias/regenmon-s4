@@ -33,7 +33,7 @@ function GameContent() {
   const [isDark, setIsDark] = useState(true)
   const { locale, toggleLang } = useLanguage()
   const { isAuthenticated, isLoading: isAuthLoading } = useConvexAuth()
-  const { authenticated: isPrivyAuthenticated, ready: isPrivyReady, getAccessToken } = usePrivy()
+  const { authenticated: isPrivyAuthenticated, ready: isPrivyReady, getAccessToken, user } = usePrivy()
   const [mounted, setMounted] = useState(false)
   // Sync Auth with Convex User Table
   const userStoredRef = useRef(false);
@@ -41,16 +41,17 @@ function GameContent() {
   useEffect(() => {
     if (!isAuthenticated) {
       userStoredRef.current = false;
+      setHasSkippedName(false);
     }
   }, [isAuthenticated]);
 
   useEffect(() => {
-    if (!isAuthLoading && isAuthenticated && !userStoredRef.current) {
-      // Ensure user exists in our DB
-      storeUser({});
+    if (!isAuthLoading && isAuthenticated && !userStoredRef.current && isPrivyReady) {
+      // Ensure user exists in our DB, and sync their email
+      storeUser({ email: user?.email?.address || "" });
       userStoredRef.current = true;
     }
-  }, [isAuthLoading, isAuthenticated, storeUser]);
+  }, [isAuthLoading, isAuthenticated, storeUser, user, isPrivyReady]);
 
   const [hasSkippedName, setHasSkippedName] = useState(false)
   const [gameState, setGameState] = useState<'START' | 'LOADING' | 'GAME'>('START')
@@ -205,8 +206,8 @@ function GameContent() {
               <Incubator locale={locale} onHatch={handleHatch} />
             )}
 
-            {/* Show popup if user exists but has no name or is default 'Trainer', and hasn't skipped */}
-            {userProfile && (!userProfile.name || userProfile.name === 'Trainer') && !hasSkippedName && (
+            {/* Show popup if user exists but has no name or is a default, and hasn't skipped */}
+            {userProfile && (!userProfile.name || userProfile.name === 'Trainer' || userProfile.name === 'Explorer' || userProfile.name.includes('@')) && !hasSkippedName && (
               <UserNamePopup locale={locale} onSave={handleSaveName} onSkip={handleSkipName} />
             )}
           </main>

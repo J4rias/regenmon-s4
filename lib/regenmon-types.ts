@@ -41,9 +41,8 @@ export interface RegenmonData {
   history?: EconomyAction[]
   // Advanced Economy
   isGameOver?: boolean
+  lastDailyReward?: string // ISO date for daily reward tracking
   dailyRewardsClaimed?: number // Tracks 3x limit
-  lastDailyRewardDate?: string // ISO date for reset
-  lastDailyReward?: string // Alias for compatibility with Convex schema
   dailyChatEarnings?: number // Tracks chat farming cap
   lastChatEarningDate?: string // ISO date to reset cap
 }

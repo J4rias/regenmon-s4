@@ -78,7 +78,8 @@ export function Dashboard({ locale, data, onUpdate, onReset, userSettings, onTut
   const [poppedStat, setPoppedStat] = useState<string | null>(null)
   const [isChatOpen, setIsChatOpen] = useState(false)
   const [lastReadMessageCount, setLastReadMessageCount] = useState(data.chatHistory?.length || 0)
-  const [lastShownMessageId, setLastShownMessageId] = useState<string | null>(null)
+  const initialAssistantId = (data.chatHistory || []).filter((m: any) => m.role === 'assistant').slice(-1)[0]?.id || null
+  const [lastShownMessageId, setLastShownMessageId] = useState<string | null>(initialAssistantId)
   const [showSpriteBubble, setShowSpriteBubble] = useState(false)
   const [spriteBubbleText, setSpriteBubbleText] = useState('')
   const [spriteBubbleMemory, setSpriteBubbleMemory] = useState<number | null>(null)
@@ -815,7 +816,7 @@ export function Dashboard({ locale, data, onUpdate, onReset, userSettings, onTut
           }}
           className="chat-overlay-responsive"
         >
-          <ChatBox data={data} locale={locale} onUpdate={onUpdate} isGameOver={isGameOver} isOpen={isChatOpen} onTypingChange={handleTypingChange} onUnlockReward={handleUnlockReward} onResetTutorial={handleResetTutorial} />
+          <ChatBox data={data} locale={locale} onUpdate={onUpdate} isGameOver={isGameOver} isOpen={isChatOpen} onTypingChange={handleTypingChange} onUnlockReward={handleUnlockReward} onResetTutorial={handleResetTutorial} userSettings={userSettings} />
         </div>
 
         {/* ITEM 3: Action Buttons */}

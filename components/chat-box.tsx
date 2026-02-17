@@ -13,9 +13,25 @@ interface ChatBoxProps {
     onTypingChange?: (isTyping: boolean) => void
     onUnlockReward: () => void
     onResetTutorial?: () => void
+    userSettings?: {
+        playerName: string
+        tutorialsSeen: string[]
+    }
 }
 
-export function ChatBox({ data, locale, onUpdate, isGameOver, isOpen, onTypingChange, onUnlockReward, onResetTutorial }: ChatBoxProps) {
+export function ChatBox({
+    data,
+    locale,
+    onUpdate,
+    isGameOver,
+    isOpen,
+    onTypingChange,
+    onUnlockReward,
+    onResetTutorial,
+    userSettings
+}: ChatBoxProps) {
+    const generateId = () => Date.now().toString() + Math.random().toString(36).substr(2, 5)
+
     const [inputValue, setInputValue] = useState('')
     const [messages, setMessages] = useState<ChatMessage[]>(data.chatHistory || [])
     const [memories, setMemories] = useState<string[]>(data.memories || [])
@@ -91,11 +107,15 @@ export function ChatBox({ data, locale, onUpdate, isGameOver, isOpen, onTypingCh
         const coins = currentRec.coins ?? 0
         const dailyClaimed = currentRec.dailyRewardsClaimed ?? 0
         const today = new Date().toISOString().split('T')[0]
-        const recordDate = currentRec.lastDailyRewardDate ? currentRec.lastDailyRewardDate.split('T')[0] : ''
+        const recordDate = currentRec.lastDailyReward ? currentRec.lastDailyReward.split('T')[0] : ''
         const effectiveClaimed = recordDate === today ? dailyClaimed : 0
 
         // If conditions for rescue aren't met, clear any pending timer
         if (coins > 0 || effectiveClaimed >= 3) {
+            if (coins > 0) {
+                // If the user has coins, reset the rescue prompt cooldown for the next time they hit zero
+                lastRescuePromptRef.current = 0
+            }
             if (rescueTimerRef.current) {
                 clearTimeout(rescueTimerRef.current)
                 rescueTimerRef.current = null
@@ -104,10 +124,10 @@ export function ChatBox({ data, locale, onUpdate, isGameOver, isOpen, onTypingCh
         }
 
         // COOLDOWN LOGIC:
-        // Only enforce 2min cooldown if we have SHOWN it before (lastRescuePromptRef > 0)
+        // Only enforce 1min cooldown if we have SHOWN it before (lastRescuePromptRef > 0)
         if (lastRescuePromptRef.current > 0) {
             const timeSinceLast = Date.now() - lastRescuePromptRef.current
-            if (timeSinceLast < 120000) return
+            if (timeSinceLast < 60000) return
         }
 
         // CHECK IF ALREADY SHOWN IN HISTORY
@@ -130,7 +150,7 @@ export function ChatBox({ data, locale, onUpdate, isGameOver, isOpen, onTypingCh
             }, 10000)
         }
 
-    }, [data.coins, data.dailyRewardsClaimed, data.lastDailyRewardDate, challengeState, isGameOver, s, messages, rescueEvalTick])
+    }, [data.coins, data.dailyRewardsClaimed, data.lastDailyReward, challengeState, isGameOver, s, messages, rescueEvalTick])
 
     // Specific cleanup for unmount
     useEffect(() => {
@@ -247,13 +267,13 @@ export function ChatBox({ data, locale, onUpdate, isGameOver, isOpen, onTypingCh
                 shouldUpdate = true
             }
             else if (cmd === '/user') {
-                // Info command, no state change, just alert for now or silent
-                // "no deben de quedar registradas en el chat"
-                // We'll use a standard alert for the user info since it can't be in chat
                 const created = new Date(currentData.createdAt).toLocaleDateString()
+                const playerName = userSettings?.playerName || 'Unknown'
+                const tutorials = userSettings?.tutorialsSeen?.length || 0
+
                 const info = locale === 'es'
-                    ? `👤 Usuario: ${currentData.name}\n🆔 Tipo: ${currentData.type}\n💰 Celdas: ${currentData.coins}\n📅 Creado: ${created}`
-                    : `👤 User: ${currentData.name}\n🆔 Type: ${currentData.type}\n💰 Cells: ${currentData.coins}\n📅 Created: ${created}`
+                    ? `👤 Entrenador: ${playerName}\n🎓 Tutoriales: ${tutorials}\n\n👾 Regenmon: ${currentData.name}\n🆔 Tipo: ${currentData.type}\n💰 Celdas: ${currentData.coins}\n📅 Creado: ${created}`
+                    : `👤 Trainer: ${playerName}\n🎓 Tutorials: ${tutorials}\n\n👾 Regenmon: ${currentData.name}\n🆔 Type: ${currentData.type}\n💰 Cells: ${currentData.coins}\n📅 Created: ${created}`
                 alert(info)
                 setInputValue('')
                 return
@@ -285,14 +305,14 @@ export function ChatBox({ data, locale, onUpdate, isGameOver, isOpen, onTypingCh
             // Only /commands reaches here
             if (responseText) {
                 const systemMsg: ChatMessage = {
-                    id: Date.now().toString(),
+                    id: generateId(),
                     role: 'assistant',
                     content: responseText,
                     timestamp: new Date().toISOString()
                 }
 
                 const userCommandMsg: ChatMessage = {
-                    id: Date.now().toString(),
+                    id: generateId(),
                     role: 'user',
                     content: inputValue,
                     timestamp: new Date().toISOString()
@@ -311,7 +331,7 @@ export function ChatBox({ data, locale, onUpdate, isGameOver, isOpen, onTypingCh
         }
 
         const userMsg: ChatMessage = {
-            id: Date.now().toString(),
+            id: generateId(),
             role: 'user',
             content: inputValue,
             timestamp: new Date().toISOString(),
