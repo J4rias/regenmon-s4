@@ -62,19 +62,20 @@ export function TopBar({
           display: 'flex',
           flexDirection: 'row',
           alignItems: 'center',
-          justifyContent: 'space-between',
+          justifyContent: 'center',
           width: '100%',
           padding: '8px 12px',
           gap: '8px',
           backgroundColor: 'var(--card)',
           minHeight: '50px',
+          position: 'relative',
         }}
       >
         {/* Mobile Menu Button - Only visible on mobile */}
         {isMobile && (
           <button
             type="button"
-            className="nes-btn flex"
+            className="nes-btn flex absolute left-3"
             onClick={() => setShowMobileMenu(!showMobileMenu)}
             style={{ fontSize: '10px', width: '40px', height: '35px', padding: 0, alignItems: 'center', justifyContent: 'center' }}
           >
@@ -83,7 +84,7 @@ export function TopBar({
         )}
 
         {/* Desktop Left: Toggles and Theme */}
-        <div className="hidden sm:flex flex-row" style={{ alignItems: 'center', gap: '8px', flex: '0 0 auto', justifyContent: 'flex-start' }}>
+        <div className="hidden sm:flex flex-row absolute left-3" style={{ alignItems: 'center', gap: '8px', justifyContent: 'flex-start' }}>
           <button
             type="button"
             onClick={onToggleLang}
@@ -126,7 +127,7 @@ export function TopBar({
         </div>
 
         {/* Right: User Name, Coins, and Logout */}
-        <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', flex: '0 0 auto', gap: '8px' }}>
+        <div className="absolute right-3" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: '8px' }}>
           {/* Coin Display */}
           {regenmonData && (
             <div
