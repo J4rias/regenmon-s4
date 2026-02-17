@@ -69,7 +69,7 @@ const strings = {
     userNameSubmit: 'Save',
     userNameSkip: 'Skip',
     tutorialTitle: 'How to Play',
-    tutorialText: 'Regenmon needs Cells to survive. Feed, Play, and Rest cost 10 Cells each. Earn Cells by chatting!',
+    tutorialText: 'Cells are used ONLY for feeding your Regenmon. Chat with it to earn more! If you hit 0 Cells, you can get help up to 3 times a day.',
     tutorialButton: 'Got it!',
     // Reward
     rewardTitle: 'Daily Reward',
@@ -151,7 +151,7 @@ const strings = {
     userNameSubmit: 'Guardar',
     userNameSkip: 'Omitir',
     tutorialTitle: 'Cómo Jugar',
-    tutorialText: 'Regenmon necesita Celdas. Alimentar, Jugar y Descansar cuestan 10 Celdas. ¡Gana Celdas chateando!',
+    tutorialText: 'Las Celdas se usan SOLO para alimentar a tu Regenmon. ¡Chatea con él para ganar más! Si te quedas con 0 Celdas, podrás recibir ayuda hasta 3 veces al día.',
     tutorialButton: '¡Entendido!',
     // Reward
     rewardTitle: 'Recompensa Diaria',
