@@ -776,19 +776,19 @@ export function Dashboard({ locale, data, onUpdate, onReset, userSettings, onTut
             <span
               style={{
                 position: 'absolute',
-                top: '8px',
-                right: '8px',
-                width: '16px',
-                height: '16px',
+                top: '6px',
+                right: '6px',
+                width: '24px',
+                height: '24px',
                 borderRadius: '50%',
                 backgroundColor: '#ef4444',
                 border: '2px solid white',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '10px',
+                fontSize: '12px',
                 fontWeight: 'bold',
-                color: 'white',
+                color: '#000000',
               }}
             >
               {unreadCount}
