@@ -179,6 +179,15 @@ export function TopBar({
         </div>
       </header>
 
+      {/* Mobile Menu Backdrop */}
+      {isMobile && showMobileMenu && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40"
+          style={{ top: '50px' }}
+          onClick={() => setShowMobileMenu(false)}
+        />
+      )}
+
       {/* Mobile Menu - Only shown on mobile */}
       {isMobile && showMobileMenu && (
         <div
