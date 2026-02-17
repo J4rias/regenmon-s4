@@ -48,11 +48,3 @@ export default function Providers({ children }: { children: React.ReactNode }) {
         </LanguageProvider>
     );
 }
-
-    // Fallback without Privy if app ID is not configured
-    return (
-        <LanguageProvider>
-            {children}
-        </LanguageProvider>
-    );
-}
