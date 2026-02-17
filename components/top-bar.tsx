@@ -90,8 +90,8 @@ export function TopBar({
           <RegenmonTheme />
         </div>
 
-        {/* Center: Archetype Info - Hidden on mobile */}
-        <div className="hidden md:flex" style={{ display: 'flex', flexShrink: 1, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '0 8px', minWidth: 0 }}>
+        {/* Center: Archetype Info - Only shown on large screens (lg+) */}
+        <div className="hidden lg:flex" style={{ flexShrink: 1, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '0 8px', minWidth: 0 }}>
           {archetypeInfo && (
             <p
               style={{
