@@ -28,13 +28,13 @@ export function LoadingScreen({ onLoaded, locale }: { onLoaded: () => void, loca
 
     return (
         <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black font-sans text-white">
-            <div className="w-80 space-y-8 text-center">
-                <h2 className="text-3xl font-bold tracking-widest animate-pulse blink-text">
+            <div className="w-80 space-y-8 text-center px-4">
+                <h2 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-widest animate-pulse blink-text">
                     {locale === 'en' ? 'LOADING...' : 'CARGANDO...'}
                 </h2>
 
                 {/* Progress Bar Container */}
-                <div className="w-full h-8 border-4 border-white p-1 relative">
+                <div className="w-full h-6 sm:h-8 border-4 border-white p-1 relative">
                     <div
                         className="h-full bg-green-500 transition-all duration-75 ease-linear"
                         style={{ width: `${progress}%` }}
