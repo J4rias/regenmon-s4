@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { Sun, Moon, LogOut } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Sun, Moon, LogOut, Menu, X } from 'lucide-react'
 import { usePrivy } from '@privy-io/react-auth'
 import type { Locale } from '@/lib/i18n'
 import type { RegenmonData } from '@/lib/regenmon-types'
@@ -16,7 +16,7 @@ interface TopBarProps {
   onToggleLang: () => void
   archetypeInfo?: string
   onReset?: () => void
-  regenmonData?: any // Using any to avoid circular dependency issues if types aren't fully propagated yet, but ideally RegenmonData
+  regenmonData?: any
   playerName?: string
 }
 
@@ -32,7 +32,19 @@ export function TopBar({
 }: TopBarProps) {
   const s = t(locale)
   const [showConfirm, setShowConfirm] = useState(false)
+  const [showMobileMenu, setShowMobileMenu] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
   const { user, logout } = usePrivy()
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 640)
+    }
+    
+    handleResize()
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   const displayName = playerName || user?.email?.address || user?.wallet?.address || 'User'
   const shortName = displayName.length > 10 ? `${displayName.slice(0, 4)}...${displayName.slice(-4)}` : displayName
@@ -50,16 +62,29 @@ export function TopBar({
           display: 'flex',
           flexDirection: 'row',
           alignItems: 'center',
-          justifyContent: 'space-between',
+          justifyContent: 'center',
           width: '100%',
           padding: '8px 12px',
-          gap: '12px',
+          gap: '8px',
           backgroundColor: 'var(--card)',
           minHeight: '50px',
+          position: 'relative',
         }}
       >
-        {/* Left: Toggles and User Info */}
-        <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '8px', flex: '0 0 auto', justifyContent: 'flex-start' }}>
+        {/* Mobile Menu Button - Only visible on mobile */}
+        {isMobile && (
+          <button
+            type="button"
+            className="nes-btn flex"
+            onClick={() => setShowMobileMenu(!showMobileMenu)}
+            style={{ fontSize: '10px', width: '40px', height: '35px', padding: 0, alignItems: 'center', justifyContent: 'center', position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }}
+          >
+            {showMobileMenu ? <X size={20} /> : <Menu size={20} />}
+          </button>
+        )}
+
+        {/* Desktop Left: Toggles and Theme */}
+        <div className="hidden sm:flex flex-row absolute left-3" style={{ alignItems: 'center', gap: '8px', justifyContent: 'flex-start' }}>
           <button
             type="button"
             onClick={onToggleLang}
@@ -76,12 +101,11 @@ export function TopBar({
           >
             {isDark ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
           </button>
-
           <RegenmonTheme />
         </div>
 
-        {/* Center: Archetype Info - Hidden on mobile */}
-        <div className="hidden md:flex" style={{ display: 'flex', flexShrink: 1, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '0 8px', minWidth: 0 }}>
+        {/* Center: Archetype Info - Shown on tablet and larger (md+) */}
+        <div className="hidden md:flex" style={{ flexShrink: 1, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '0 8px', minWidth: 0 }}>
           {archetypeInfo && (
             <p
               style={{
@@ -102,10 +126,8 @@ export function TopBar({
           )}
         </div>
 
-        {/* Right: Actions (User Info, Reset & Logout) */}
-        <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', flex: '0 0 auto', gap: '8px' }}>
-
-
+        {/* Right: User Name, Coins, and Logout */}
+        <div className="absolute right-3" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: '8px' }}>
           {/* Coin Display */}
           {regenmonData && (
             <div
@@ -126,14 +148,16 @@ export function TopBar({
             </div>
           )}
 
-          <div className="hidden sm:flex items-center gap-2 px-2 py-1 border-2 border-dashed border-gray-500 rounded text-[10px]" style={{ color: 'var(--foreground)', height: '35px' }}>
-            <span title={displayName}>{shortName}</span>
+          {/* User Name - Always visible */}
+          <div className="flex items-center gap-2 px-2 py-1 border-2 border-dashed border-gray-500 rounded text-[10px] sm:text-[11px]" style={{ color: 'var(--foreground)', height: '35px' }}>
+            <span title={displayName} className="whitespace-nowrap">{shortName}</span>
           </div>
 
-          {onReset && (
+          {/* Reset Button - Hidden on mobile, visible on sm and larger */}
+          {onReset && !isMobile && (
             <button
               type="button"
-              className="nes-btn is-error hidden sm:block"
+              className="nes-btn is-error"
               onClick={() => setShowConfirm(true)}
               style={{ fontSize: '10px' }}
             >
@@ -141,6 +165,7 @@ export function TopBar({
             </button>
           )}
 
+          {/* Logout Button - Always visible */}
           <button
             type="button"
             className="nes-btn is-warning"
@@ -153,6 +178,100 @@ export function TopBar({
           </button>
         </div>
       </header>
+
+      {/* Mobile Menu Backdrop */}
+      {isMobile && showMobileMenu && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40"
+          style={{ top: '50px' }}
+          onClick={() => setShowMobileMenu(false)}
+        />
+      )}
+
+      {/* Mobile Menu - Only shown on mobile */}
+      {isMobile && showMobileMenu && (
+        <div
+          className="fixed z-50 border-r-2 border-border shadow-lg"
+          style={{
+            top: '50px',
+            left: '0',
+            bottom: '0',
+            width: '75%',
+            maxWidth: '320px',
+            backgroundColor: 'var(--card)',
+            padding: '16px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+            boxShadow: '4px 0 12px rgba(0, 0, 0, 0.3)',
+            overflowY: 'auto',
+          }}
+        >
+          {/* Language Toggle */}
+          <button
+            type="button"
+            onClick={() => {
+              onToggleLang()
+              setShowMobileMenu(false)
+            }}
+            className="nes-btn w-full"
+            style={{ fontSize: '12px', textAlign: 'left' }}
+          >
+            {locale === 'en' ? '🇪🇸 Español' : '🇬🇧 English'}
+          </button>
+
+          {/* Theme Toggle */}
+          <button
+            type="button"
+            onClick={() => {
+              onToggleTheme()
+              setShowMobileMenu(false)
+            }}
+            className="nes-btn w-full"
+            style={{ fontSize: '12px', textAlign: 'left' }}
+          >
+            {isDark ? '☀️ Light Mode' : '🌙 Dark Mode'}
+          </button>
+
+          {/* Archetype Info - Only shown in mobile menu */}
+          {archetypeInfo && (
+            <div
+              className="md:hidden nes-container w-full"
+              style={{
+                backgroundColor: 'var(--background)',
+                color: 'var(--foreground)',
+                fontSize: '12px',
+                padding: '8px',
+                textAlign: 'center',
+              }}
+            >
+              <p style={{ margin: 0, fontWeight: 'bold', textTransform: 'uppercase' }}>
+                {archetypeInfo}
+              </p>
+            </div>
+          )}
+
+          {/* Reset Button */}
+          {onReset && (
+            <button
+              type="button"
+              className="nes-btn is-error w-full"
+              onClick={() => {
+                setShowConfirm(true)
+                setShowMobileMenu(false)
+              }}
+              style={{ fontSize: '12px' }}
+            >
+              {s.resetButton}
+            </button>
+          )}
+
+          {/* Theme Component */}
+          <div style={{ paddingTop: '8px' }}>
+            <RegenmonTheme />
+          </div>
+        </div>
+      )}
 
       {/* Confirm Reset Dialog */}
       {showConfirm && onReset && (
