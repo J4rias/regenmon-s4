@@ -6,21 +6,12 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  turbo: {
+  turbopack: {
     resolveAlias: {
-      'pino': 'pino/browser',
+      'thread-stream': './lib/noop.js',
+      'sonic-boom': './lib/noop.js',
+      'pino-pretty': './lib/noop.js',
     },
-  },
-  webpack: (config, { isServer }) => {
-    if (!isServer) {
-      config.resolve.fallback = {
-        ...config.resolve.fallback,
-        'pino': false,
-        'pino-pretty': false,
-        'thread-stream': false,
-      };
-    }
-    return config;
   },
 }
 
