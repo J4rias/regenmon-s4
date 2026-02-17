@@ -62,9 +62,9 @@ export function TopBar({
         {/* Mobile Menu Button */}
         <button
           type="button"
-          className="sm:hidden nes-btn"
+          className="sm:hidden nes-btn flex"
           onClick={() => setShowMobileMenu(!showMobileMenu)}
-          style={{ fontSize: '10px', width: '40px', height: '35px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          style={{ fontSize: '10px', width: '40px', height: '35px', padding: 0, alignItems: 'center', justifyContent: 'center' }}
         >
           {showMobileMenu ? <X size={20} /> : <Menu size={20} />}
         </button>
