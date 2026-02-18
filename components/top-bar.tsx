@@ -40,7 +40,7 @@ export function TopBar({
     const handleResize = () => {
       setIsMobile(window.innerWidth < 640)
     }
-    
+
     handleResize()
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
@@ -84,7 +84,7 @@ export function TopBar({
         )}
 
         {/* Desktop Left: Toggles and Theme */}
-        <div className="hidden sm:flex flex-row absolute left-3" style={{ alignItems: 'center', gap: '8px', justifyContent: 'flex-start' }}>
+        <div className="hidden sm:flex flex-row items-center gap-2 flex-1 justify-start">
           <button
             type="button"
             onClick={onToggleLang}
@@ -105,21 +105,11 @@ export function TopBar({
         </div>
 
         {/* Center: Archetype Info - Shown on tablet and larger (md+) */}
-        <div className="hidden md:flex" style={{ flexShrink: 1, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '0 8px', minWidth: 0 }}>
+        <div className="hidden md:flex items-center justify-center absolute left-1/2 -translate-x-1/2 w-auto max-w-[30%] lg:max-w-[40%] px-4 pointer-events-none">
           {archetypeInfo && (
             <p
-              style={{
-                color: 'var(--foreground)',
-                fontSize: '12px',
-                fontWeight: 'bold',
-                textAlign: 'center',
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                textTransform: 'uppercase',
-                maxWidth: '100%',
-                margin: 0,
-              }}
+              className="font-bold text-[10px] lg:text-[12px] text-center whitespace-nowrap overflow-hidden text-ellipsis uppercase m-0 pointer-events-auto"
+              style={{ color: 'var(--foreground)' }}
             >
               {archetypeInfo}
             </p>
@@ -127,11 +117,11 @@ export function TopBar({
         </div>
 
         {/* Right: User Name, Coins, and Logout */}
-        <div className="absolute right-3" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: '8px' }}>
+        <div className="flex flex-row items-center justify-end gap-2 flex-1 min-w-0">
           {/* Coin Display */}
           {regenmonData && (
             <div
-              className={`flex items-center gap-2 px-2 py-1 rounded border text-xs`}
+              className={`flex items-center gap-2 px-2 py-1 rounded border text-[10px] sm:text-xs shrink-0`}
               style={{
                 backgroundColor: isDark ? 'rgba(0, 0, 0, 0.2)' : 'rgba(200, 200, 200, 0.5)',
                 borderColor: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)',
@@ -149,7 +139,7 @@ export function TopBar({
           )}
 
           {/* User Name - Always visible */}
-          <div className="flex items-center gap-2 px-2 py-1 border-2 border-dashed border-gray-500 rounded text-[10px] sm:text-[11px]" style={{ color: 'var(--foreground)', height: '35px' }}>
+          <div className="flex items-center gap-2 px-2 py-1 border-2 border-dashed border-gray-500 rounded text-[10px] sm:text-[11px] h-[35px] shrink-0" style={{ color: 'var(--foreground)' }}>
             <span title={displayName} className="whitespace-nowrap">{shortName}</span>
           </div>
 
@@ -157,7 +147,7 @@ export function TopBar({
           {onReset && !isMobile && (
             <button
               type="button"
-              className="nes-btn is-error"
+              className="nes-btn is-error shrink-0"
               onClick={() => setShowConfirm(true)}
               style={{ fontSize: '10px' }}
             >
@@ -168,13 +158,13 @@ export function TopBar({
           {/* Logout Button - Always visible */}
           <button
             type="button"
-            className="nes-btn is-warning"
+            className="nes-btn is-warning shrink-0"
             onClick={logout}
             style={{ fontSize: '10px', display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 6px' }}
             title={s.logoutButton}
           >
             <LogOut size={12} />
-            <span className="hidden sm:inline">{s.logoutButton}</span>
+            <span className="hidden xl:inline">{s.logoutButton}</span>
           </button>
         </div>
       </header>

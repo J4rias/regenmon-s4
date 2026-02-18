@@ -118,11 +118,15 @@ export function Dashboard({ locale, data, onUpdate, onReset, userSettings, onTut
   const triggerPopup = useCallback((stat: keyof typeof STAT_COLORS | 'drain' | 'cells', amount: number) => {
     const id = floatingIdRef.current++
     let randomX = 0
-    if (stat === 'happiness') randomX = -80 - (Math.random() * 30)
-    else if (stat === 'energy') randomX = 80 + (Math.random() * 30)
-    else if (stat === 'hunger') randomX = -15 - (Math.random() * 30)
-    else if (stat === 'cells') randomX = 15 + (Math.random() * 30)
-    else randomX = (Math.random() * 20) - 10
+    // Simple window check for mobile multiplier
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 640
+    const m = isMobile ? 0.5 : 1
+
+    if (stat === 'happiness') randomX = (-80 - (Math.random() * 30)) * m
+    else if (stat === 'energy') randomX = (80 + (Math.random() * 30)) * m
+    else if (stat === 'hunger') randomX = (-15 - (Math.random() * 30)) * m
+    else if (stat === 'cells') randomX = (15 + (Math.random() * 30)) * m
+    else randomX = ((Math.random() * 20) - 10) * m
 
     let color = ''
     if (stat === 'cells') color = amount > 0 ? '#76c442' : '#cd5c5c'
@@ -586,6 +590,46 @@ export function Dashboard({ locale, data, onUpdate, onReset, userSettings, onTut
             max-height: 600px !important;
           }
         }
+
+        /* Better mobile buttons */
+        @media (max-width: 640px) {
+          .mobile-actions-container {
+            display: grid !important;
+            grid-template-columns: 1fr !important;
+            width: 100%;
+          }
+          .mobile-action-btn {
+            width: 100% !important;
+            height: 64px !important;
+            justify-content: center !important;
+            font-size: 14px !important;
+          }
+          .mobile-action-btn i {
+            transform: scale(1.2);
+            margin-right: 4px;
+          }
+          .mobile-sprite-hide {
+            display: none !important;
+          }
+        }
+
+        /* Center the balloon tail when the bubble itself is centered */
+        @media (max-width: 1023px) {
+          .sprite-bubble {
+            max-width: calc(100vw - 80px) !important;
+          }
+          .sprite-bubble .nes-balloon.from-left::before,
+          .sprite-bubble .nes-balloon.from-left::after {
+            left: 50% !important;
+            margin-left: -2px !important;
+          }
+        }
+
+        @media (min-width: 1024px) {
+          .sprite-bubble {
+            max-width: 320px !important;
+          }
+        }
       `}</style>
 
 
@@ -670,10 +714,10 @@ export function Dashboard({ locale, data, onUpdate, onReset, userSettings, onTut
               {/* Sprite Speech Bubble (when chat is closed) */}
               {showSpriteBubble && !isChatOpen && (
                 <div
-                  className="sprite-bubble absolute top-[-20px] left-[55%]"
+                  className="sprite-bubble absolute top-[-60px] left-1/2 -translate-x-1/2 lg:top-[-20px] lg:left-[55%] lg:translate-x-0"
                   style={{
-                    maxWidth: '280px',
                     width: 'max-content',
+                    minWidth: '150px',
                     zIndex: 20,
                   }}
                 >
@@ -824,23 +868,24 @@ export function Dashboard({ locale, data, onUpdate, onReset, userSettings, onTut
           className="nes-container is-rounded w-full"
           style={{ backgroundColor: 'var(--card)', color: 'var(--foreground)', padding: '16px' }}
         >
-          <div className="flex flex-wrap items-center justify-center gap-3">
+          <div className="mobile-actions-container flex flex-wrap items-center justify-center gap-3">
             <Image
               src={archetype.image}
               alt={archetype.id}
               width={56}
               height={56}
+              className="mobile-sprite-hide"
               style={{ imageRendering: 'pixelated', flexShrink: 0 }}
             />
             {/* Play button (Happiness) */}
             <button
               type="button"
-              className={`nes-btn is-primary hover-lift btn-press ${cooldowns.happiness || data.stats.happiness >= 100 || isGameOver ? 'btn-cooldown' : ''}`}
+              className={`nes-btn is-primary hover-lift btn-press mobile-action-btn ${cooldowns.happiness || data.stats.happiness >= 100 || isGameOver ? 'btn-cooldown' : ''}`}
               onClick={() => addStat('happiness')}
               disabled={cooldowns.happiness || data.stats.happiness >= 100 || isGameOver}
               style={{ fontSize: '11px', padding: '4px 16px', height: '56px', display: 'inline-flex', alignItems: 'center' }}
             >
-              <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <i className={`nes-icon heart is-small ${data.stats.happiness > 75 ? '' : data.stats.happiness > 25 ? 'is-half' : 'is-empty'}`} />
                 {s.happiness}
               </span>
@@ -849,27 +894,27 @@ export function Dashboard({ locale, data, onUpdate, onReset, userSettings, onTut
             {/* Rest button (Energy) */}
             <button
               type="button"
-              className={`nes-btn is-warning hover-lift btn-press ${cooldowns.energy || data.stats.energy >= 100 || isGameOver ? 'btn-cooldown' : ''}`}
+              className={`nes-btn is-warning hover-lift btn-press mobile-action-btn ${cooldowns.energy || data.stats.energy >= 100 || isGameOver ? 'btn-cooldown' : ''}`}
               onClick={() => addStat('energy')}
               disabled={cooldowns.energy || data.stats.energy >= 100 || isGameOver}
               style={{ fontSize: '11px', padding: '4px 16px', height: '56px', display: 'inline-flex', alignItems: 'center' }}
             >
-              <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <i className={`nes-icon star is-small ${data.stats.energy > 75 ? '' : data.stats.energy > 25 ? 'is-half' : 'is-empty'}`} />
                 {s.energy}
               </span>
             </button>
 
             {/* Feed button (Hunger) */}
-            <div className="relative group">
+            <div className="relative group w-full sm:w-auto">
               <button
                 type="button"
-                className={`nes-btn is-success hover-lift btn-press ${cooldowns.hunger || data.stats.hunger >= 100 || isGameOver || (data.coins ?? 0) < 10 ? 'btn-cooldown' : ''}`}
+                className={`nes-btn is-success hover-lift btn-press mobile-action-btn ${cooldowns.hunger || data.stats.hunger >= 100 || isGameOver || (data.coins ?? 0) < 10 ? 'btn-cooldown' : ''}`}
                 onClick={() => addStat('hunger')}
                 disabled={cooldowns.hunger || data.stats.hunger >= 100 || isGameOver}
-                style={{ fontSize: '11px', padding: '4px 16px', height: '56px', display: 'inline-flex', alignItems: 'center' }}
+                style={{ fontSize: '11px', padding: '4px 16px', height: '56px', display: 'inline-flex', alignItems: 'center', width: '100%' }}
               >
-                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <i className={`nes-icon like is-small ${data.stats.hunger > 50 ? '' : 'is-empty'}`} />
                   {s.hunger}
                 </span>
