@@ -46,7 +46,7 @@ export function RegisterHub({ data, playerName }: RegisterHubProps) {
         setError(null);
 
         // Specific canonical URL provided by user
-        const appUrl = 'https://v0-regenmon-s4.vercel.app/';
+        const appUrl = 'https://v0-regenmon-s5.vercel.app/';
         // Use the same base for the sprite so it's accessible globally
         const spriteUrl = appUrl.replace(/\/$/, '') + currentSprite;
 
