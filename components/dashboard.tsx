@@ -19,6 +19,13 @@ import { CeldaIcon } from '@/components/celda-icon'
 import { TutorialPopup } from '@/components/tutorial-popup'
 import { DailyRewardChest } from '@/components/daily-reward-chest'
 import { getRandomFeedingResponse } from '@/lib/feeding-responses'
+import { useMutation } from 'convex/react'
+import { api } from '@/convex/_generated/api'
+import { TrainingPanel } from '@/components/training-panel'
+import { ResultCard } from '@/components/result-card'
+import { EvolutionProgress } from '@/components/evolution-progress'
+import { TrainingGallery } from '@/components/training-gallery'
+import { TRAINING_STAGE_THRESHOLDS, EVOLUTION_BONUS_CELLS } from '@/lib/regenmon-types'
 
 interface DashboardProps {
   locale: Locale
@@ -29,28 +36,15 @@ interface DashboardProps {
   onTutorialSeen?: (tutorialId: string) => void
 }
 
-function getEvolutionStage(createdAt: string | number, bonus: number = 0, gameOverAt?: string): { stage: EvolutionStage; stageIndex: number; timeRemaining: number } {
-  const startTime = typeof createdAt === 'string' && !isNaN(Number(createdAt)) ? Number(createdAt) : new Date(createdAt).getTime()
-  const endTime = gameOverAt ? new Date(gameOverAt).getTime() : Date.now()
-  const elapsed = endTime - startTime + bonus
-  const effectiveElapsed = Math.max(0, elapsed)
-  const stageIndex = Math.min(Math.floor(effectiveElapsed / EVOLUTION_INTERVAL_MS), EVOLUTION_STAGES.length - 1)
+function getEvolutionStage(stageNum: number = 1): { stage: EvolutionStage; stageIndex: number } {
+  const stageIndex = Math.max(0, Math.min(EVOLUTION_STAGES.length - 1, stageNum - 1))
   const stage = EVOLUTION_STAGES[stageIndex] || 'baby'
-  const nextStageAt = (stageIndex + 1) * EVOLUTION_INTERVAL_MS
-  const timeRemaining = stageIndex >= EVOLUTION_STAGES.length - 1 ? 0 : Math.max(0, nextStageAt - effectiveElapsed)
-  return { stage, stageIndex, timeRemaining }
+  return { stage, stageIndex }
 }
 
 function getMood(stats: RegenmonData['stats']): 'happy' | 'sad' {
   const avg = (stats.happiness + stats.energy + stats.hunger) / 3
   return avg > 50 ? 'happy' : 'sad'
-}
-
-function formatTime(ms: number): string {
-  const totalSeconds = Math.ceil(ms / 1000)
-  const minutes = Math.floor(totalSeconds / 60)
-  const seconds = totalSeconds % 60
-  return `${minutes}:${seconds.toString().padStart(2, '0')}`
 }
 
 // Colors for each stat action
@@ -91,6 +85,14 @@ export function Dashboard({ locale, data, onUpdate, onReset, userSettings, onTut
     energy: false,
   })
   const [floatingTexts, setFloatingTexts] = useState<FloatingText[]>([])
+  const [showTraining, setShowTraining] = useState(false)
+  const [isEvaluating, setIsEvaluating] = useState(false)
+  const [trainingResult, setTrainingResult] = useState<any>(null)
+  const [showEvolutionOverlay, setShowEvolutionOverlay] = useState(false)
+  const [evolvedTo, setEvolvedTo] = useState<string | null>(null)
+
+  const saveTrainingMutation = useMutation(api.training.saveTraining)
+
   const floatingIdRef = useRef(0)
   const drainTickRef = useRef(0)
   const dataRef = useRef(data)
@@ -108,6 +110,62 @@ export function Dashboard({ locale, data, onUpdate, onReset, userSettings, onTut
   }, [userSettings])
 
   const prevStatsRef = useRef(data.stats)
+
+  const handleEvaluate = async (imageBase64: string, category: string) => {
+    setIsEvaluating(true);
+    try {
+      const resp = await fetch("/api/evaluate", {
+        method: "POST",
+        body: JSON.stringify({ imageBase64, category }),
+        headers: { "Content-Type": "application/json" },
+      });
+      const result = await resp.json();
+
+      if (result.error) throw new Error(result.error);
+
+      // Guardar en Convex
+      const saveResult = await saveTrainingMutation({
+        regenmonId: data._id as any,
+        category: result.category,
+        score: result.score,
+        feedback: result.feedback,
+        imageBase64: imageBase64, // Guardar imagen completa
+      });
+
+      setTrainingResult({
+        ...result,
+        points: saveResult.points,
+        coins: saveResult.coins,
+        stats: saveResult.stats,
+      });
+
+      // Implementar reacción anímica visual del Regenmon al recibir feedback
+      const reactionEmoji = result.score >= 80 ? "😍" : (result.score >= 60 ? "😃" : (result.score >= 40 ? "🤔" : "😓"));
+      setSpriteBubbleText(`${reactionEmoji} ¡Recibí feedback! "${result.feedback.substring(0, 50)}..."`);
+      setShowSpriteBubble(true);
+      setTimeout(() => setShowSpriteBubble(false), 6000);
+
+      // Actualizar el estado global en la UI de inmediato
+      onUpdate({
+        ...dataRef.current,
+        stats: saveResult.stats,
+        coins: saveResult.coins,
+        totalPoints: saveResult.newTotalPoints,
+        evolutionStage: saveResult.newStage,
+      });
+
+      if (saveResult.didEvolve) {
+        setEvolvedTo(saveResult.newStage === 2 ? s.stageAdult : s.stageFull);
+        setShowEvolutionOverlay(true);
+        setTimeout(() => setShowEvolutionOverlay(false), 4000);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error al evaluar: " + (err as Error).message);
+    } finally {
+      setIsEvaluating(false);
+    }
+  };
 
   const archetype = ARCHETYPES.find((a) => a.id === data.type) || ARCHETYPES[0]
   const s = t(locale)
@@ -347,15 +405,13 @@ export function Dashboard({ locale, data, onUpdate, onReset, userSettings, onTut
   }, [onUpdate, triggerPopup]) // Added triggerPopup to deps
 
   // ... (rendering logic) ...
-  const { stage, stageIndex, timeRemaining } = getEvolutionStage(data.createdAt, data.evolutionBonus ?? 0, data.gameOverAt)
+  const { stage, stageIndex } = getEvolutionStage(data.evolutionStage || 1)
   const mood = getMood(data.stats)
   // Use local const for isGameOver to avoid TypeScript issues in callbacks if logic checks data directly
   const isGameOver = data.stats.happiness <= 0 && data.stats.energy <= 0 && data.stats.hunger <= 0
 
   const sprites = SPRITE_MAP[data.type as keyof typeof SPRITE_MAP] || SPRITE_MAP['Scrap-Eye'] // Fallback
   const currentSprite = (sprites[stage] && sprites[stage][mood]) ? sprites[stage][mood] : sprites.baby.happy
-  const isMaxEvolution = stageIndex >= EVOLUTION_STAGES.length - 1
-  const timerProgress = isMaxEvolution ? 100 : ((EVOLUTION_INTERVAL_MS - timeRemaining) / EVOLUTION_INTERVAL_MS) * 100
 
   const stageLabels: Record<EvolutionStage, string> = {
     baby: s.stageBaby,
@@ -651,31 +707,7 @@ export function Dashboard({ locale, data, onUpdate, onReset, userSettings, onTut
               {data.name}
             </p>
 
-            {/* Vertical Evolution Bar (Absolute Left) */}
-            <div
-              className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 flex flex-col items-center justify-between h-40 sm:h-64 py-2 z-10 pointer-events-none"
-              style={{ backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: '8px', padding: '4px 2px', backdropFilter: 'blur(2px)', boxShadow: '0 4px 6px rgba(0,0,0,0.3)' }}
-            >
 
-
-              <span
-                className="text-[10px] sm:text-xs font-bold tracking-widest uppercase"
-                style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', color: archetype.color }}
-              >
-                {stageLabels[stage]}
-              </span>
-
-              <div className="relative flex-1 w-2 sm:w-3 my-2 bg-black/20 rounded-full overflow-hidden border border-white/10">
-                <div
-                  className="absolute bottom-0 left-0 w-full transition-all duration-1000"
-                  style={{ height: `${timerProgress}%`, backgroundColor: archetype.color }}
-                />
-              </div>
-
-              <span className="text-[10px] font-mono text-center" style={{ color: 'white', textShadow: '0 1px 2px black' }}>
-                {isMaxEvolution ? 'MAX' : formatTime(timeRemaining)}
-              </span>
-            </div>
 
             {/* Sprite Animation Container */}
             <div className="relative">
@@ -905,24 +937,27 @@ export function Dashboard({ locale, data, onUpdate, onReset, userSettings, onTut
               </span>
             </button>
 
-            {/* Feed button (Hunger) */}
-            <div className="relative group w-full sm:w-auto">
+            {/* Actions Grid */}
+            <div className="grid grid-cols-2 gap-2 sm:gap-4 mobile-actions-container">
               <button
                 type="button"
-                className={`nes-btn is-success hover-lift btn-press mobile-action-btn ${cooldowns.hunger || data.stats.hunger >= 100 || isGameOver || (data.coins ?? 0) < 10 ? 'btn-cooldown' : ''}`}
+                className={`nes-btn is-success mobile-action-btn ${cooldowns.hunger ? 'btn-cooldown' : ''}`}
                 onClick={() => addStat('hunger')}
-                disabled={cooldowns.hunger || data.stats.hunger >= 100 || isGameOver}
-                style={{ fontSize: '11px', padding: '4px 16px', height: '56px', display: 'inline-flex', alignItems: 'center', width: '100%' }}
               >
-                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <i className={`nes-icon like is-small ${data.stats.hunger > 50 ? '' : 'is-empty'}`} />
-                  {s.hunger}
-                </span>
+                <CeldaIcon className="inline-block w-5 h-6 mr-1 align-bottom" /> {s.feedBtn}
               </button>
-              {/* Tooltip for cost */}
-              <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-black text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 border border-white/20">
-                -10 {s.cellName} <CeldaIcon className="inline-block w-3 h-4 -mt-1" />
-              </div>
+              <button
+                type="button"
+                className="nes-btn is-warning mobile-action-btn"
+                onClick={() => setShowTraining(true)}
+              >
+                🎓 {s.train || "Entrenar"}
+              </button>
+            </div>
+
+            <EvolutionProgress totalPoints={data.totalPoints ?? 0} stage={stageIndex + 1} />  {/* Tooltip for cost */}
+            <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-black text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 border border-white/20">
+              -10 {s.cellName} <CeldaIcon className="inline-block w-3 h-4 -mt-1" />
             </div>
           </div>
         </div>
@@ -1028,6 +1063,48 @@ export function Dashboard({ locale, data, onUpdate, onReset, userSettings, onTut
             </div>
           </details>
         </div>
+
+        {/* ITEM 6: Training Gallery Setup */}
+        <div className="w-full">
+          <TrainingGallery regenmonId={data._id as string} />
+        </div>
+
+        {/* Evolution Overlay */}
+        {showEvolutionOverlay && (
+          <div className="fixed inset-0 bg-black/80 z-[100] flex flex-col items-center justify-center text-center p-6 animate-fadeIn">
+            <div className="nes-container is-rounded is-dark">
+              <p className="text-2xl mb-4">🎉 ¡{data.name} evolucionó!</p>
+              <p className="text-xl mb-4 text-yellow-400">Ahora es etapa: {evolvedTo}</p>
+              <p className="text-sm">¡Bonus de +{EVOLUTION_BONUS_CELLS} celdas otorgado!</p>
+              <div className="mt-8 animate-bounce">
+                <Image src={currentSprite} alt="Evolved" width={200} height={200} className="mx-auto pixelated" />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Training Modals */}
+        {showTraining && (
+          <div className="fixed inset-0 bg-black/70 z-[60] flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
+            <div className="w-full max-w-lg">
+              {!trainingResult ? (
+                <TrainingPanel
+                  isEvaluating={isEvaluating}
+                  onCancel={() => setShowTraining(false)}
+                  onEvaluate={handleEvaluate}
+                />
+              ) : (
+                <ResultCard
+                  {...trainingResult}
+                  onClose={() => {
+                    setTrainingResult(null);
+                    setShowTraining(false);
+                  }}
+                />
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

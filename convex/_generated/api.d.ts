@@ -9,6 +9,7 @@
  */
 
 import type * as regenmon from "../regenmon.js";
+import type * as training from "../training.js";
 import type * as users from "../users.js";
 
 import type {
@@ -19,6 +20,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   regenmon: typeof regenmon;
+  training: typeof training;
   users: typeof users;
 }>;
 

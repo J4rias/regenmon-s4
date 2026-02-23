@@ -51,6 +51,10 @@ const strings = {
     gameOver: 'GAME OVER',
     openChat: 'Open Chat',
     closeChat: 'Close Chat',
+    train: 'Train',
+    feedBtn: 'Feed',
+    playBtn: 'Play',
+    sleepBtn: 'Rest',
     memorySaved: 'Memory saved',
     memoryRecalled: 'Memory recalled',
     // Economy
@@ -133,6 +137,10 @@ const strings = {
     gameOver: 'FIN DEL JUEGO',
     openChat: 'Abrir Chat',
     closeChat: 'Cerrar Chat',
+    train: 'Entrenar',
+    feedBtn: 'Alimentar',
+    playBtn: 'Jugar',
+    sleepBtn: 'Descansar',
     memorySaved: 'Memoria guardada',
     memoryRecalled: 'Memoria recordada',
     // Economy

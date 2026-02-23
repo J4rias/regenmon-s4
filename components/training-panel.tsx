@@ -1,0 +1,128 @@
+"use client";
+
+import { useState, useRef } from "react";
+import Image from "next/image";
+
+interface TrainingPanelProps {
+    onEvaluate: (imageBase64: string, category: string) => Promise<void>;
+    onCancel: () => void;
+    isEvaluating: boolean;
+}
+
+const CATEGORIES = [
+    { id: "Código", icon: "💻", label: "Tu mejor código" },
+    { id: "Diseño", icon: "🎨", label: "UI/UX o gráfico" },
+    { id: "Proyecto", icon: "🚀", label: "Proyecto completo" },
+    { id: "Aprendizaje", icon: "📚", label: "Notas o ejercicios" },
+];
+
+export function TrainingPanel({ onEvaluate, onCancel, isEvaluating }: TrainingPanelProps) {
+    const [selectedCategory, setSelectedCategory] = useState<string>("Código");
+    const [previewImage, setPreviewImage] = useState<string | null>(null);
+    const [error, setError] = useState<string | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        // Validar tamaño (5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            setError("❌ El archivo es demasiado grande. Máximo 5MB.");
+            return;
+        }
+
+        setError(null);
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            setPreviewImage(reader.result as string);
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const handleEvaluate = async () => {
+        if (!previewImage) return;
+        const base64Data = previewImage.split(",")[1];
+        await onEvaluate(base64Data, selectedCategory);
+    };
+
+    return (
+        <div className="nes-container with-title is-centered p-4">
+            <p className="title">🎓 Entrenar Regenmon</p>
+
+            {!previewImage ? (
+                <>
+                    <p className="mb-4">Elige una categoría y sube tu captura:</p>
+
+                    <div className="grid grid-cols-2 gap-2 mb-6">
+                        {CATEGORIES.map((cat) => (
+                            <button
+                                key={cat.id}
+                                type="button"
+                                className={`nes-btn w-full text-xs sm:text-sm ${selectedCategory === cat.id ? "is-warning" : ""
+                                    }`}
+                                onClick={() => setSelectedCategory(cat.id)}
+                            >
+                                <span className="block text-xl mb-1">{cat.icon}</span>
+                                {cat.label}
+                            </button>
+                        ))}
+                    </div>
+
+                    <div className="flex flex-col items-center">
+                        <button
+                            type="button"
+                            className="nes-btn is-primary mb-2"
+                            onClick={() => fileInputRef.current?.click()}
+                        >
+                            📸 Subir Captura
+                        </button>
+                        <input
+                            type="file"
+                            ref={fileInputRef}
+                            onChange={handleFileChange}
+                            accept="image/*"
+                            className="hidden"
+                        />
+                        {error && <p className="nes-text is-error text-xs mt-2">{error}</p>}
+                    </div>
+                </>
+            ) : (
+                <div className="flex flex-col items-center">
+                    <div
+                        className="relative w-full mb-4 border-4 border-orange-500 rounded overflow-hidden"
+                        style={{ height: "300px" }}
+                    >
+                        <Image
+                            src={previewImage}
+                            alt="Preview"
+                            fill
+                            className="object-contain bg-black"
+                        />
+                    </div>
+
+                    <div className="flex gap-4">
+                        <button
+                            disabled={isEvaluating}
+                            className={`nes-btn ${isEvaluating ? "is-disabled" : "is-success"}`}
+                            onClick={handleEvaluate}
+                        >
+                            {isEvaluating ? "🔄 Evaluando..." : "✅ Evaluar"}
+                        </button>
+                        {!isEvaluating && (
+                            <button className="nes-btn is-error" onClick={() => setPreviewImage(null)}>
+                                ❌ Cancelar
+                            </button>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            <div className="mt-6">
+                <button className="nes-btn is-normal w-full" onClick={onCancel}>
+                    Cerrar
+                </button>
+            </div>
+        </div>
+    );
+}

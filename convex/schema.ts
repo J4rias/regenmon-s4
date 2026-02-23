@@ -22,8 +22,10 @@ export default defineSchema({
         }),
         coins: v.number(),           // Cell balance
         createdAt: v.number(),       // Timestamp
-        lastDailyReward: v.optional(v.string()),
-        dailyRewardsClaimed: v.optional(v.number()),
+        lastDailyReward: v.optional(v.string()), // ISO date for daily reward tracking
+        dailyRewardsClaimed: v.optional(v.number()), // Tracks 3x limit
+        dailyChatEarnings: v.optional(v.number()), // Tracks chat farming cap
+        lastChatEarningDate: v.optional(v.string()), // ISO date to reset cap
 
         // Game State Tracking
         isGameOver: v.optional(v.boolean()),
@@ -31,7 +33,24 @@ export default defineSchema({
         evolutionBonus: v.optional(v.number()),
         chatHistory: v.optional(v.array(v.any())),
         history: v.optional(v.array(v.any())),
+
+        // Training System Fields
+        totalPoints: v.optional(v.number()),     // Puntos acumulados de todos los entrenamientos
+        evolutionStage: v.optional(v.number()),  // 1, 2, o 3
+        trainingHistory: v.optional(v.array(v.any())), // fallback for local if needed, but we use the table
     }).index("by_user", ["userId"]),
+
+    // Trainings table: Stores history of AI evaluations
+    trainings: defineTable({
+        regenmonId: v.id("regenmons"),
+        category: v.string(),        // 'Código', 'Diseño', 'Proyecto', 'Aprendizaje'
+        score: v.number(),           // 0-100
+        feedback: v.string(),        // Comentarios de la IA
+        coins: v.number(),           // Monedas ganadas
+        points: v.number(),          // Puntos ganados (igual al score)
+        imageBase64: v.optional(v.string()), // Miniatura opcional
+        timestamp: v.string(),       // ISO Date
+    }).index("by_regenmon", ["regenmonId"]),
 
     // Actions table: Complete history of all game events
     actions: defineTable({

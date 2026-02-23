@@ -38,14 +38,33 @@ export interface RegenmonData {
   gameOverAt?: string // timestamp when game over occurred
   chatHistory?: ChatMessage[]
   memories?: string[]
-  history?: EconomyAction[]
-  // Advanced Economy
-  isGameOver?: boolean
   lastDailyReward?: string // ISO date for daily reward tracking
   dailyRewardsClaimed?: number // Tracks 3x limit
   dailyChatEarnings?: number // Tracks chat farming cap
   lastChatEarningDate?: string // ISO date to reset cap
+  // Training System
+  totalPoints?: number
+  evolutionStage?: number // 1, 2, 3
+  trainingHistory?: TrainingRecord[]
+  history?: EconomyAction[]
 }
+
+export interface TrainingRecord {
+  score: number
+  category: string
+  feedback: string
+  coins: number
+  points: number
+  timestamp: string
+  imageBase64?: string
+}
+
+export const TRAINING_STAGE_THRESHOLDS = {
+  ST2: 500,
+  ST3: 1500
+}
+
+export const EVOLUTION_BONUS_CELLS = 100
 
 export interface EconomyAction {
   id: string
