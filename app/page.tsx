@@ -107,7 +107,6 @@ function GameContent() {
         coins: data.coins,
         evolutionBonus: data.evolutionBonus,
         gameOverAt: data.gameOverAt,
-        isGameOver: data.isGameOver,
         chatHistory: data.chatHistory,
         history: data.history,
       });
@@ -138,6 +137,9 @@ function GameContent() {
   const archetypeInfo = currentArchetype
     ? `${currentArchetype.getName(locale)} — "${currentArchetype.getLabel(locale)}"`
     : undefined
+
+  // Data is ready when both queries have responded (either with data or null)
+  const isDataReady = regenmon !== undefined && userProfile !== undefined;
 
   if (!mounted) {
     return (
@@ -174,7 +176,7 @@ function GameContent() {
       )}
 
       {gameState === 'LOADING' && (
-        <LoadingScreen onLoaded={handleLoaded} locale={locale} />
+        <LoadingScreen onLoaded={handleLoaded} locale={locale} isReady={isDataReady} />
       )}
 
       {gameState === 'GAME' && (

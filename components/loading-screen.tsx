@@ -3,20 +3,23 @@
 import { useEffect, useState } from 'react'
 import type { Locale } from '@/lib/i18n'
 
-export function LoadingScreen({ onLoaded, locale }: { onLoaded: () => void, locale: Locale }) {
+export function LoadingScreen({ onLoaded, locale, isReady = false }: { onLoaded: () => void, locale: Locale, isReady?: boolean }) {
     const [progress, setProgress] = useState(0)
 
     useEffect(() => {
-        const totalTime = 3000 // 3 seconds
+        const totalTime = 3000 // 3 seconds base
         const intervalTime = 50
-        const steps = totalTime / intervalTime
+        const baseSteps = totalTime / intervalTime
 
         const timer = setInterval(() => {
             setProgress((prev) => {
-                const next = prev + (100 / steps)
+                // If data is ready, we jump or move much faster
+                const increment = isReady ? (100 / (500 / intervalTime)) : (100 / baseSteps)
+                const next = prev + increment
+
                 if (next >= 100) {
                     clearInterval(timer)
-                    setTimeout(onLoaded, 200) // Small delay at 100%
+                    setTimeout(onLoaded, 100)
                     return 100
                 }
                 return next
@@ -24,7 +27,7 @@ export function LoadingScreen({ onLoaded, locale }: { onLoaded: () => void, loca
         }, intervalTime)
 
         return () => clearInterval(timer)
-    }, [onLoaded])
+    }, [onLoaded, isReady])
 
     return (
         <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black font-sans text-white">

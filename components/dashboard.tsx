@@ -26,6 +26,8 @@ import { ResultCard } from '@/components/result-card'
 import { EvolutionProgress } from '@/components/evolution-progress'
 import { TrainingGallery } from '@/components/training-gallery'
 import { TRAINING_STAGE_THRESHOLDS, EVOLUTION_BONUS_CELLS } from '@/lib/regenmon-types'
+import { RegisterHub } from '@/components/register-hub'
+import { useHubSync } from '@/app/hooks/useHubSync'
 
 interface DashboardProps {
   locale: Locale
@@ -97,6 +99,26 @@ export function Dashboard({ locale, data, onUpdate, onReset, userSettings, onTut
   const drainTickRef = useRef(0)
   const dataRef = useRef(data)
 
+  const [activeTab, setActiveTab] = useState<'my-regenmon' | 'social'>('my-regenmon')
+
+  // Derive sprite info early for syncing
+  const { stage, stageIndex } = getEvolutionStage(data.evolutionStage || 1)
+  const mood = getMood(data.stats)
+  const sprites = SPRITE_MAP[data.type as keyof typeof SPRITE_MAP] || SPRITE_MAP['Scrap-Eye']
+  const archetype = ARCHETYPES.find((a) => a.id === data.type) || ARCHETYPES[0]
+
+  const isSad = data.stats.happiness < 20 || data.stats.energy < 20 || data.stats.hunger < 20
+  const currentSprite = (sprites[stage] && sprites[stage][isSad ? 'sad' : 'happy']) ? sprites[stage][isSad ? 'sad' : 'happy'] : sprites.baby.happy
+  const spriteAbsoluteUrl = typeof window !== 'undefined' ? `${window.location.origin}${currentSprite}` : currentSprite
+
+  const { triggerSync } = useHubSync({
+    stats: data.stats,
+    totalPoints: data.totalPoints || 0,
+    trainingHistory: data.trainingHistory || [],
+    sprite: spriteAbsoluteUrl,
+    stage: data.evolutionStage || 1,
+  })
+
   // Update refs when data changes
   useEffect(() => {
     dataRef.current = data
@@ -159,6 +181,11 @@ export function Dashboard({ locale, data, onUpdate, onReset, userSettings, onTut
         setShowEvolutionOverlay(true);
         setTimeout(() => setShowEvolutionOverlay(false), 4000);
       }
+
+      // Trigger sync manually after training, wait for React state to flush new stats
+      setTimeout(() => {
+        triggerSync();
+      }, 1000);
     } catch (err) {
       console.error(err);
       alert("Error al evaluar: " + (err as Error).message);
@@ -167,7 +194,6 @@ export function Dashboard({ locale, data, onUpdate, onReset, userSettings, onTut
     }
   };
 
-  const archetype = ARCHETYPES.find((a) => a.id === data.type) || ARCHETYPES[0]
   const s = t(locale)
 
   const [isRewardUnlocked, setIsRewardUnlocked] = useState(false)
@@ -404,14 +430,8 @@ export function Dashboard({ locale, data, onUpdate, onReset, userSettings, onTut
     return () => clearInterval(drain)
   }, [onUpdate, triggerPopup]) // Added triggerPopup to deps
 
-  // ... (rendering logic) ...
-  const { stage, stageIndex } = getEvolutionStage(data.evolutionStage || 1)
-  const mood = getMood(data.stats)
   // Use local const for isGameOver to avoid TypeScript issues in callbacks if logic checks data directly
   const isGameOver = data.stats.happiness <= 0 && data.stats.energy <= 0 && data.stats.hunger <= 0
-
-  const sprites = SPRITE_MAP[data.type as keyof typeof SPRITE_MAP] || SPRITE_MAP['Scrap-Eye'] // Fallback
-  const currentSprite = (sprites[stage] && sprites[stage][mood]) ? sprites[stage][mood] : sprites.baby.happy
 
   const stageLabels: Record<EvolutionStage, string> = {
     baby: s.stageBaby,
@@ -693,381 +713,408 @@ export function Dashboard({ locale, data, onUpdate, onReset, userSettings, onTut
       {/* Main Layout - Single Column Stack for Focus */}
       <div className="flex w-full max-w-3xl flex-col gap-4">
 
-        {/* ITEM 1: Sprite Container */}
-        <div
-          className="nes-container is-rounded scanlines relative w-full overflow-hidden"
-          style={{
-            backgroundColor: archetype.colorDark,
-            borderColor: archetype.color,
-            color: 'var(--foreground)',
-          }}
-        >
-          <div className="flex flex-col items-center gap-2 py-4 sm:py-6" style={{ opacity: isGameOver ? 0.2 : 1, transition: 'opacity 0.5s ease' }}>
-            <p className="text-center text-lg leading-relaxed sm:text-2xl" style={{ color: archetype.color }}>
-              {data.name}
-            </p>
+        {/* Tabs for Mi Regenmon / Social */}
+        <div className="flex w-full justify-center gap-2 mb-2">
+          <button
+            type="button"
+            className={`nes-btn text-xs sm:text-sm px-4 py-2 ${activeTab === 'my-regenmon' ? 'is-primary' : 'bg-gray-800 text-gray-400'}`}
+            onClick={() => setActiveTab('my-regenmon')}
+          >
+            Mi Regenmon
+          </button>
+          <button
+            type="button"
+            className={`nes-btn text-xs sm:text-sm px-4 py-2 ${activeTab === 'social' ? 'is-primary' : 'bg-gray-800 text-gray-400'}`}
+            onClick={() => setActiveTab('social')}
+          >
+            Social
+          </button>
+        </div>
+
+        {activeTab === 'my-regenmon' && (
+          <>
+            {/* ITEM 1: Sprite Container */}
+            <div
+              className="nes-container is-rounded scanlines relative w-full overflow-hidden"
+              style={{
+                backgroundColor: archetype.colorDark,
+                borderColor: archetype.color,
+                color: 'var(--foreground)',
+              }}
+            >
+              <div className="flex flex-col items-center gap-2 py-4 sm:py-6" style={{ opacity: isGameOver ? 0.2 : 1, transition: 'opacity 0.5s ease' }}>
+                <p className="text-center text-lg leading-relaxed sm:text-2xl" style={{ color: archetype.color }}>
+                  {data.name}
+                </p>
 
 
 
-            {/* Sprite Animation Container */}
-            <div className="relative">
-              <div className="animate-breathe flex flex-col items-center gap-2">
-                {currentSprite ? (
-                  <Image
-                    src={currentSprite}
-                    alt={`${data.name} - ${stage} ${mood}`}
-                    width={300}
-                    height={300}
-                    className="h-48 w-48 sm:h-72 sm:w-72"
-                    style={{ imageRendering: 'pixelated' }}
-                    priority
-                  />
-                ) : (
-                  <div
-                    className="relative flex h-32 w-32 items-center justify-center border-4 sm:h-48 sm:w-48"
-                    style={{
-                      borderColor: archetype.color,
-                      backgroundColor: archetype.colorDark,
-                      imageRendering: 'pixelated',
-                    }}
-                  >
-                    <div
-                      className="h-12 w-12 sm:h-16 sm:w-16"
-                      style={{
-                        backgroundColor: archetype.color,
-                        boxShadow: `0 0 24px ${archetype.color}80`,
-                      }}
-                    />
+                {/* Sprite Animation Container */}
+                <div className="relative">
+                  <div className="animate-breathe flex flex-col items-center gap-2">
+                    {currentSprite ? (
+                      <Image
+                        src={currentSprite}
+                        alt={`${data.name} - ${stage} ${mood}`}
+                        width={300}
+                        height={300}
+                        className="h-48 w-48 sm:h-72 sm:w-72"
+                        style={{ imageRendering: 'pixelated' }}
+                        priority
+                      />
+                    ) : (
+                      <div
+                        className="relative flex h-32 w-32 items-center justify-center border-4 sm:h-48 sm:w-48"
+                        style={{
+                          borderColor: archetype.color,
+                          backgroundColor: archetype.colorDark,
+                          imageRendering: 'pixelated',
+                        }}
+                      >
+                        <div
+                          className="h-12 w-12 sm:h-16 sm:w-16"
+                          style={{
+                            backgroundColor: archetype.color,
+                            boxShadow: `0 0 24px ${archetype.color}80`,
+                          }}
+                        />
+                      </div>
+                    )}
+                    <div className="h-2 w-20 opacity-30 sm:w-24" style={{ backgroundColor: archetype.color, filter: 'blur(4px)' }} />
                   </div>
-                )}
-                <div className="h-2 w-20 opacity-30 sm:w-24" style={{ backgroundColor: archetype.color, filter: 'blur(4px)' }} />
+
+                  {/* Sprite Speech Bubble (when chat is closed) */}
+                  {showSpriteBubble && !isChatOpen && (
+                    <div
+                      className="sprite-bubble absolute top-[-60px] left-1/2 -translate-x-1/2 lg:top-[-20px] lg:left-[55%] lg:translate-x-0"
+                      style={{
+                        width: 'max-content',
+                        minWidth: '150px',
+                        zIndex: 20,
+                      }}
+                    >
+                      <div
+                        className="nes-balloon from-left"
+                        style={{
+                          backgroundColor: 'var(--secondary)',
+                          color: 'var(--foreground)',
+                          fontSize: '13px',
+                          padding: '12px 16px',
+                          lineHeight: '1.5',
+                          wordBreak: 'break-word',
+                          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+                          position: 'relative',
+                        }}
+                      >
+                        {spriteBubbleText ? (
+                          <>
+                            {spriteBubbleText}
+                            {spriteBubbleMemory && (
+                              <div
+                                className="absolute -bottom-2 -right-2 bg-yellow-400 text-black px-1.5 py-0.5 rounded border border-black text-[10px] font-bold flex items-center gap-1 shadow-sm"
+                                style={{ zIndex: 1 }}
+                                title={spriteBubbleIsRecall ? s.memoryRecalled : s.memorySaved}
+                              >
+                                🧠 {spriteBubbleMemory}
+                              </div>
+                            )}
+                          </>
+                        ) : isRegenmonTyping ? (
+                          <span className="animate-pulse">...</span>
+                        ) : null}
+                      </div>
+                    </div>
+                  )}
+
+                  {floatingTexts.map((ft) => (
+                    <span
+                      key={ft.id}
+                      className="float-up absolute text-2xl font-bold sm:text-3xl"
+                      style={{
+                        color: ft.color,
+                        top: ft.stat === 'cells' ? '15%' : '30%',
+                        left: `calc(50% + ${ft.x}px)`,
+                        transform: 'translateX(-50%)',
+                        textShadow: `0 0 8px ${ft.color}80, 2px 2px 0 #000`,
+                        zIndex: 100,
+                      }}
+                    >
+                      <span className="flex items-center gap-1">
+                        {ft.amount > 0 ? `+${ft.amount}` : ft.amount}
+                        {ft.stat === 'cells' && <CeldaIcon className="w-5 h-7" />}
+                      </span>
+                    </span>
+                  ))}
+                </div>
+
               </div>
 
-              {/* Sprite Speech Bubble (when chat is closed) */}
-              {showSpriteBubble && !isChatOpen && (
-                <div
-                  className="sprite-bubble absolute top-[-60px] left-1/2 -translate-x-1/2 lg:top-[-20px] lg:left-[55%] lg:translate-x-0"
-                  style={{
-                    width: 'max-content',
-                    minWidth: '150px',
-                    zIndex: 20,
-                  }}
-                >
-                  <div
-                    className="nes-balloon from-left"
-                    style={{
-                      backgroundColor: 'var(--secondary)',
-                      color: 'var(--foreground)',
-                      fontSize: '13px',
-                      padding: '12px 16px',
-                      lineHeight: '1.5',
-                      wordBreak: 'break-word',
-                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
-                      position: 'relative',
-                    }}
-                  >
-                    {spriteBubbleText ? (
-                      <>
-                        {spriteBubbleText}
-                        {spriteBubbleMemory && (
-                          <div
-                            className="absolute -bottom-2 -right-2 bg-yellow-400 text-black px-1.5 py-0.5 rounded border border-black text-[10px] font-bold flex items-center gap-1 shadow-sm"
-                            style={{ zIndex: 1 }}
-                            title={spriteBubbleIsRecall ? s.memoryRecalled : s.memorySaved}
-                          >
-                            🧠 {spriteBubbleMemory}
-                          </div>
-                        )}
-                      </>
-                    ) : isRegenmonTyping ? (
-                      <span className="animate-pulse">...</span>
-                    ) : null}
-                  </div>
-                </div>
-              )}
-
-              {floatingTexts.map((ft) => (
-                <span
-                  key={ft.id}
-                  className="float-up absolute text-2xl font-bold sm:text-3xl"
-                  style={{
-                    color: ft.color,
-                    top: ft.stat === 'cells' ? '15%' : '30%',
-                    left: `calc(50% + ${ft.x}px)`,
-                    transform: 'translateX(-50%)',
-                    textShadow: `0 0 8px ${ft.color}80, 2px 2px 0 #000`,
-                    zIndex: 100,
-                  }}
-                >
-                  <span className="flex items-center gap-1">
-                    {ft.amount > 0 ? `+${ft.amount}` : ft.amount}
-                    {ft.stat === 'cells' && <CeldaIcon className="w-5 h-7" />}
-                  </span>
-                </span>
-              ))}
-            </div>
-
-          </div>
-
-          {isGameOver && (
-            <>
-              <style>{`
+              {isGameOver && (
+                <>
+                  <style>{`
                 @keyframes gameOverPulse {
                   0%, 100% { opacity: 1; transform: scale(1); }
                   50% { opacity: 0.7; transform: scale(1.05); }
                 }
               `}</style>
-              <div className="absolute inset-0 flex items-center justify-center" style={{ zIndex: 20 }}>
-                <p style={{ color: '#cd5c5c', fontSize: 'clamp(24px, 6vw, 48px)', fontWeight: 'bold', textAlign: 'center', textShadow: '0 0 20px rgba(205,92,92,0.6), 3px 3px 0 #000', lineHeight: 1.3, margin: 0 }}>
-                  {s.gameOver}
-                </p>
-              </div>
-            </>
-          )}
-        </div>
+                  <div className="absolute inset-0 flex items-center justify-center" style={{ zIndex: 20 }}>
+                    <p style={{ color: '#cd5c5c', fontSize: 'clamp(24px, 6vw, 48px)', fontWeight: 'bold', textAlign: 'center', textShadow: '0 0 20px rgba(205,92,92,0.6), 3px 3px 0 #000', lineHeight: 1.3, margin: 0 }}>
+                      {s.gameOver}
+                    </p>
+                  </div>
+                </>
+              )}
+            </div>
 
-        {/* Floating Chat Button */}
-        <button
-          type="button"
-          className={`nes-btn is-primary hover-lift btn-press ${hasUnreadMessages ? 'notification-pulse' : ''}`}
-          onClick={() => setIsChatOpen(!isChatOpen)}
-          style={{
-            position: 'fixed',
-            bottom: '24px',
-            right: '24px',
-            width: '64px',
-            height: '64px',
-            borderRadius: '50%',
-            padding: '0',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
-          }}
-          title={isChatOpen ? (locale === 'es' ? 'Ocultar chat' : 'Hide chat') : (locale === 'es' ? 'Mostrar chat' : 'Show chat')}
-        >
-          <MessageCircle className="h-6 w-6" />
-          {hasUnreadMessages && (
-            <span
+            {/* Floating Chat Button */}
+            <button
+              type="button"
+              className={`nes-btn is-primary hover-lift btn-press ${hasUnreadMessages ? 'notification-pulse' : ''}`}
+              onClick={() => setIsChatOpen(!isChatOpen)}
               style={{
-                position: 'absolute',
-                top: '6px',
-                right: '6px',
-                width: '24px',
-                height: '24px',
+                position: 'fixed',
+                bottom: '24px',
+                right: '24px',
+                width: '64px',
+                height: '64px',
                 borderRadius: '50%',
-                backgroundColor: '#ef4444',
-                border: '2px solid white',
+                padding: '0',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '12px',
-                fontWeight: 'bold',
-                color: '#000000',
+                zIndex: 1000,
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
               }}
+              title={isChatOpen ? (locale === 'es' ? 'Ocultar chat' : 'Hide chat') : (locale === 'es' ? 'Mostrar chat' : 'Show chat')}
             >
-              {unreadCount}
-            </span>
-          )}
-        </button>
-
-        {/* Chat Overlay (Kept mounted to maintain state during transitions) */}
-        <div
-          style={{
-            position: 'fixed',
-            bottom: '100px',
-            right: '24px',
-            width: '450px',
-            height: '600px',
-            zIndex: 999,
-            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.4)',
-            borderRadius: '8px',
-            overflow: 'visible',
-            opacity: isChatOpen ? 1 : 0,
-            pointerEvents: isChatOpen ? 'auto' : 'none',
-            visibility: isChatOpen ? 'visible' : 'hidden',
-            transition: 'opacity 0.3s ease, transform 0.3s ease',
-            transform: isChatOpen ? 'translateY(0)' : 'translateY(20px)',
-          }}
-          className="chat-overlay-responsive"
-        >
-          <ChatBox data={data} locale={locale} onUpdate={onUpdate} isGameOver={isGameOver} isOpen={isChatOpen} onTypingChange={handleTypingChange} onUnlockReward={handleUnlockReward} onResetTutorial={handleResetTutorial} userSettings={userSettings} />
-        </div>
-
-        {/* ITEM 3: Action Buttons */}
-        <div
-          className="nes-container is-rounded w-full"
-          style={{ backgroundColor: 'var(--card)', color: 'var(--foreground)', padding: '16px' }}
-        >
-          <div className="mobile-actions-container flex flex-wrap items-center justify-center gap-3">
-            <Image
-              src={archetype.image}
-              alt={archetype.id}
-              width={56}
-              height={56}
-              className="mobile-sprite-hide"
-              style={{ imageRendering: 'pixelated', flexShrink: 0 }}
-            />
-            {/* Play button (Happiness) */}
-            <button
-              type="button"
-              className={`nes-btn is-primary hover-lift btn-press mobile-action-btn ${cooldowns.happiness || data.stats.happiness >= 100 || isGameOver ? 'btn-cooldown' : ''}`}
-              onClick={() => addStat('happiness')}
-              disabled={cooldowns.happiness || data.stats.happiness >= 100 || isGameOver}
-              style={{ fontSize: '11px', padding: '4px 16px', height: '56px', display: 'inline-flex', alignItems: 'center' }}
-            >
-              <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <i className={`nes-icon heart is-small ${data.stats.happiness > 75 ? '' : data.stats.happiness > 25 ? 'is-half' : 'is-empty'}`} />
-                {s.happiness}
-              </span>
-            </button>
-
-            {/* Rest button (Energy) */}
-            <button
-              type="button"
-              className={`nes-btn is-warning hover-lift btn-press mobile-action-btn ${cooldowns.energy || data.stats.energy >= 100 || isGameOver ? 'btn-cooldown' : ''}`}
-              onClick={() => addStat('energy')}
-              disabled={cooldowns.energy || data.stats.energy >= 100 || isGameOver}
-              style={{ fontSize: '11px', padding: '4px 16px', height: '56px', display: 'inline-flex', alignItems: 'center' }}
-            >
-              <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <i className={`nes-icon star is-small ${data.stats.energy > 75 ? '' : data.stats.energy > 25 ? 'is-half' : 'is-empty'}`} />
-                {s.energy}
-              </span>
-            </button>
-
-            {/* Actions Grid */}
-            <div className="grid grid-cols-2 gap-2 sm:gap-4 mobile-actions-container">
-              <button
-                type="button"
-                className={`nes-btn is-success mobile-action-btn ${cooldowns.hunger ? 'btn-cooldown' : ''}`}
-                onClick={() => addStat('hunger')}
-              >
-                <CeldaIcon className="inline-block w-5 h-6 mr-1 align-bottom" /> {s.feedBtn}
-              </button>
-              <button
-                type="button"
-                className="nes-btn is-warning mobile-action-btn"
-                onClick={() => setShowTraining(true)}
-              >
-                🎓 {s.train || "Entrenar"}
-              </button>
-            </div>
-
-            <EvolutionProgress totalPoints={data.totalPoints ?? 0} stage={stageIndex + 1} />  {/* Tooltip for cost */}
-            <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-black text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 border border-white/20">
-              -10 {s.cellName} <CeldaIcon className="inline-block w-3 h-4 -mt-1" />
-            </div>
-          </div>
-        </div>
-
-        {/* ITEM 4: Stats Panel */}
-        <div
-          className="nes-container is-rounded w-full"
-          style={{ backgroundColor: 'var(--card)', color: 'var(--foreground)' }}
-        >
-          <h2 className="mb-5 text-center text-sm leading-relaxed sm:text-base" style={{ color: 'var(--foreground)' }}>
-            {s.statsTitle}
-          </h2>
-
-          <div className="flex flex-col gap-5">
-            {/* Happiness Bar */}
-            <div>
-              <label className="mb-2 block text-xs leading-relaxed sm:text-sm" style={{ color: 'var(--foreground)' }}>
-                {s.happiness}
-              </label>
-              <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '8px' }}>
-                <progress className="nes-progress is-primary" value={data.stats.happiness} max={100} style={{ flex: 1 }} />
-                <span className={`transition-all duration-300 ${poppedStat === 'happiness' ? 'animate-stat-pop' : ''}`} style={{ color: poppedStat === 'happiness' ? STAT_COLORS.happiness : 'var(--muted-foreground)', fontSize: '12px', fontWeight: 'bold', minWidth: '40px', textAlign: 'right' }}>{data.stats.happiness}%</span>
-              </div>
-            </div>
-
-            {/* Energy Bar */}
-            <div>
-              <label className="mb-2 block text-xs leading-relaxed sm:text-sm" style={{ color: 'var(--foreground)' }}>
-                {s.energy}
-              </label>
-              <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '8px' }}>
-                <progress className="nes-progress is-warning" value={data.stats.energy} max={100} style={{ flex: 1 }} />
-                <span className={`transition-all duration-300 ${poppedStat === 'energy' ? 'animate-stat-pop' : ''}`} style={{ color: poppedStat === 'energy' ? STAT_COLORS.energy : 'var(--muted-foreground)', fontSize: '12px', fontWeight: 'bold', minWidth: '40px', textAlign: 'right' }}>{data.stats.energy}%</span>
-              </div>
-            </div>
-
-            {/* Hunger Bar */}
-            <div>
-              <label className="mb-2 block text-xs leading-relaxed sm:text-sm" style={{ color: 'var(--foreground)' }}>
-                {s.hunger}
-              </label>
-              <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '8px' }}>
-                <progress className="nes-progress is-success" value={data.stats.hunger} max={100} style={{ flex: 1 }} />
-                <span className={`transition-all duration-300 ${poppedStat === 'hunger' ? 'animate-stat-pop' : ''}`} style={{ color: poppedStat === 'hunger' ? STAT_COLORS.hunger : 'var(--muted-foreground)', fontSize: '12px', fontWeight: 'bold', minWidth: '40px', textAlign: 'right' }}>{data.stats.hunger}%</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* ITEM 5: History Panel (Collapsible) */}
-        <div
-          className="nes-container is-rounded w-full"
-          style={{ backgroundColor: 'var(--card)', color: 'var(--foreground)' }}
-        >
-          <details>
-            <summary className="text-xs sm:text-sm cursor-pointer outline-none select-none" style={{ color: 'var(--foreground)' }}>
-              📜 {s.historyTitle || "Historial"}
-            </summary>
-            <div className="mt-4 flex flex-col gap-2 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
-              {data.history && data.history.length > 0 ? (
-                data.history.map((action) => (
-                  <div key={action.id} className="flex justify-between items-center text-[10px] sm:text-xs border-b border-gray-700 pb-1 last:border-0">
-                    <div className="flex-1 flex items-center gap-2 min-w-0">
-                      {action.type === 'feed' ? (
-                        <>
-                          <span className="w-4 text-center shrink-0">🍎</span>
-                          <span className="truncate">{s.feedButton}</span>
-                        </>
-                      ) : action.type === 'play' ? (
-                        <>
-                          <span className="w-4 text-center shrink-0">🎮</span>
-                          <span className="truncate">{s.playButton}</span>
-                        </>
-                      ) : action.type === 'sleep' ? (
-                        <>
-                          <span className="w-4 text-center shrink-0">💤</span>
-                          <span className="truncate">{s.restButton}</span>
-                        </>
-                      ) : (
-                        <>
-                          <CeldaIcon className="w-4 h-5 shrink-0" />
-                          <span className="truncate">{s.historyEarn || 'Ganar'}</span>
-                        </>
-                      )}
-                    </div>
-                    <div className={`w-24 sm:w-32 text-right font-mono whitespace-nowrap ${action.amount < 0 ? 'text-red-400' : 'text-green-400'}`}>
-                      {action.amount > 0 ? `+${action.amount}` : action.amount} {s.cellName}
-                    </div>
-                    <div className="w-20 sm:w-28 text-right text-gray-500 text-[9px] ml-4 shrink-0">
-                      {new Date(action.date).toLocaleString([], {
-                        day: '2-digit',
-                        month: '2-digit',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        hour12: false
-                      }).replace(',', '')}
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <p className="text-[10px] text-gray-500 italic text-center py-2">{s.noHistory || "No hay actividad reciente"}</p>
+              <MessageCircle className="h-6 w-6" />
+              {hasUnreadMessages && (
+                <span
+                  style={{
+                    position: 'absolute',
+                    top: '6px',
+                    right: '6px',
+                    width: '24px',
+                    height: '24px',
+                    borderRadius: '50%',
+                    backgroundColor: '#ef4444',
+                    border: '2px solid white',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '12px',
+                    fontWeight: 'bold',
+                    color: '#000000',
+                  }}
+                >
+                  {unreadCount}
+                </span>
               )}
-            </div>
-          </details>
-        </div>
+            </button>
 
-        {/* ITEM 6: Training Gallery Setup */}
-        <div className="w-full">
-          <TrainingGallery regenmonId={data._id as string} />
-        </div>
+            {/* Chat Overlay (Kept mounted to maintain state during transitions) */}
+            <div
+              style={{
+                position: 'fixed',
+                bottom: '100px',
+                right: '24px',
+                width: '450px',
+                height: '600px',
+                zIndex: 999,
+                boxShadow: '0 8px 24px rgba(0, 0, 0, 0.4)',
+                borderRadius: '8px',
+                overflow: 'visible',
+                opacity: isChatOpen ? 1 : 0,
+                pointerEvents: isChatOpen ? 'auto' : 'none',
+                visibility: isChatOpen ? 'visible' : 'hidden',
+                transition: 'opacity 0.3s ease, transform 0.3s ease',
+                transform: isChatOpen ? 'translateY(0)' : 'translateY(20px)',
+              }}
+              className="chat-overlay-responsive"
+            >
+              <ChatBox data={data} locale={locale} onUpdate={onUpdate} isGameOver={isGameOver} isOpen={isChatOpen} onTypingChange={handleTypingChange} onUnlockReward={handleUnlockReward} onResetTutorial={handleResetTutorial} userSettings={userSettings} />
+            </div>
+
+            {/* ITEM 3: Action Buttons */}
+            <div
+              className="nes-container is-rounded w-full"
+              style={{ backgroundColor: 'var(--card)', color: 'var(--foreground)', padding: '16px' }}
+            >
+              <div className="mobile-actions-container flex flex-wrap items-center justify-center gap-3">
+                <Image
+                  src={archetype.image}
+                  alt={archetype.id}
+                  width={56}
+                  height={56}
+                  className="mobile-sprite-hide"
+                  style={{ imageRendering: 'pixelated', flexShrink: 0 }}
+                />
+                {/* Play button (Happiness) */}
+                <button
+                  type="button"
+                  className={`nes-btn is-primary hover-lift btn-press mobile-action-btn ${cooldowns.happiness || data.stats.happiness >= 100 || isGameOver ? 'btn-cooldown' : ''}`}
+                  onClick={() => addStat('happiness')}
+                  disabled={cooldowns.happiness || data.stats.happiness >= 100 || isGameOver}
+                  style={{ fontSize: '11px', padding: '4px 16px', height: '56px', display: 'inline-flex', alignItems: 'center' }}
+                >
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <i className={`nes-icon heart is-small ${data.stats.happiness > 75 ? '' : data.stats.happiness > 25 ? 'is-half' : 'is-empty'}`} />
+                    {s.happiness}
+                  </span>
+                </button>
+
+                {/* Rest button (Energy) */}
+                <button
+                  type="button"
+                  className={`nes-btn is-warning hover-lift btn-press mobile-action-btn ${cooldowns.energy || data.stats.energy >= 100 || isGameOver ? 'btn-cooldown' : ''}`}
+                  onClick={() => addStat('energy')}
+                  disabled={cooldowns.energy || data.stats.energy >= 100 || isGameOver}
+                  style={{ fontSize: '11px', padding: '4px 16px', height: '56px', display: 'inline-flex', alignItems: 'center' }}
+                >
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <i className={`nes-icon star is-small ${data.stats.energy > 75 ? '' : data.stats.energy > 25 ? 'is-half' : 'is-empty'}`} />
+                    {s.energy}
+                  </span>
+                </button>
+
+                {/* Actions Grid */}
+                <div className="grid grid-cols-2 gap-2 sm:gap-4 mobile-actions-container">
+                  <button
+                    type="button"
+                    className={`nes-btn is-success mobile-action-btn ${cooldowns.hunger ? 'btn-cooldown' : ''}`}
+                    onClick={() => addStat('hunger')}
+                  >
+                    <CeldaIcon className="inline-block w-5 h-6 mr-1 align-bottom" /> {s.feedBtn}
+                  </button>
+                  <button
+                    type="button"
+                    className="nes-btn is-warning mobile-action-btn"
+                    onClick={() => setShowTraining(true)}
+                  >
+                    🎓 {s.train || "Entrenar"}
+                  </button>
+                </div>
+
+                <EvolutionProgress totalPoints={data.totalPoints ?? 0} stage={stageIndex + 1} />  {/* Tooltip for cost */}
+                <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-black text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 border border-white/20">
+                  -10 {s.cellName} <CeldaIcon className="inline-block w-3 h-4 -mt-1" />
+                </div>
+              </div>
+            </div>
+
+            {/* ITEM 4: Stats Panel */}
+            <div
+              className="nes-container is-rounded w-full"
+              style={{ backgroundColor: 'var(--card)', color: 'var(--foreground)' }}
+            >
+              <h2 className="mb-5 text-center text-sm leading-relaxed sm:text-base" style={{ color: 'var(--foreground)' }}>
+                {s.statsTitle}
+              </h2>
+
+              <div className="flex flex-col gap-5">
+                {/* Happiness Bar */}
+                <div>
+                  <label className="mb-2 block text-xs leading-relaxed sm:text-sm" style={{ color: 'var(--foreground)' }}>
+                    {s.happiness}
+                  </label>
+                  <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '8px' }}>
+                    <progress className="nes-progress is-primary" value={data.stats.happiness} max={100} style={{ flex: 1 }} />
+                    <span className={`transition-all duration-300 ${poppedStat === 'happiness' ? 'animate-stat-pop' : ''}`} style={{ color: poppedStat === 'happiness' ? STAT_COLORS.happiness : 'var(--muted-foreground)', fontSize: '12px', fontWeight: 'bold', minWidth: '40px', textAlign: 'right' }}>{data.stats.happiness}%</span>
+                  </div>
+                </div>
+
+                {/* Energy Bar */}
+                <div>
+                  <label className="mb-2 block text-xs leading-relaxed sm:text-sm" style={{ color: 'var(--foreground)' }}>
+                    {s.energy}
+                  </label>
+                  <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '8px' }}>
+                    <progress className="nes-progress is-warning" value={data.stats.energy} max={100} style={{ flex: 1 }} />
+                    <span className={`transition-all duration-300 ${poppedStat === 'energy' ? 'animate-stat-pop' : ''}`} style={{ color: poppedStat === 'energy' ? STAT_COLORS.energy : 'var(--muted-foreground)', fontSize: '12px', fontWeight: 'bold', minWidth: '40px', textAlign: 'right' }}>{data.stats.energy}%</span>
+                  </div>
+                </div>
+
+                {/* Hunger Bar */}
+                <div>
+                  <label className="mb-2 block text-xs leading-relaxed sm:text-sm" style={{ color: 'var(--foreground)' }}>
+                    {s.hunger}
+                  </label>
+                  <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '8px' }}>
+                    <progress className="nes-progress is-success" value={data.stats.hunger} max={100} style={{ flex: 1 }} />
+                    <span className={`transition-all duration-300 ${poppedStat === 'hunger' ? 'animate-stat-pop' : ''}`} style={{ color: poppedStat === 'hunger' ? STAT_COLORS.hunger : 'var(--muted-foreground)', fontSize: '12px', fontWeight: 'bold', minWidth: '40px', textAlign: 'right' }}>{data.stats.hunger}%</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* ITEM 5: History Panel (Collapsible) */}
+            <div
+              className="nes-container is-rounded w-full"
+              style={{ backgroundColor: 'var(--card)', color: 'var(--foreground)' }}
+            >
+              <details>
+                <summary className="text-xs sm:text-sm cursor-pointer outline-none select-none" style={{ color: 'var(--foreground)' }}>
+                  📜 {s.historyTitle || "Historial"}
+                </summary>
+                <div className="mt-4 flex flex-col gap-2 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
+                  {data.history && data.history.length > 0 ? (
+                    data.history.map((action, index) => (
+                      <div key={action.id + '-' + index} className="flex justify-between items-center text-[10px] sm:text-xs border-b border-gray-700 pb-1 last:border-0">
+                        <div className="flex-1 flex items-center gap-2 min-w-0">
+                          {action.type === 'feed' ? (
+                            <>
+                              <span className="w-4 text-center shrink-0">🍎</span>
+                              <span className="truncate">{s.feedButton}</span>
+                            </>
+                          ) : action.type === 'play' ? (
+                            <>
+                              <span className="w-4 text-center shrink-0">🎮</span>
+                              <span className="truncate">{s.playButton}</span>
+                            </>
+                          ) : action.type === 'sleep' ? (
+                            <>
+                              <span className="w-4 text-center shrink-0">💤</span>
+                              <span className="truncate">{s.restButton}</span>
+                            </>
+                          ) : (
+                            <>
+                              <CeldaIcon className="w-4 h-5 shrink-0" />
+                              <span className="truncate">{s.historyEarn || 'Ganar'}</span>
+                            </>
+                          )}
+                        </div>
+                        <div className={`w-24 sm:w-32 text-right font-mono whitespace-nowrap ${action.amount < 0 ? 'text-red-400' : 'text-green-400'}`}>
+                          {action.amount > 0 ? `+${action.amount}` : action.amount} {s.cellName}
+                        </div>
+                        <div className="w-20 sm:w-28 text-right text-gray-500 text-[9px] ml-4 shrink-0">
+                          {new Date(action.date).toLocaleString([], {
+                            day: '2-digit',
+                            month: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: false
+                          }).replace(',', '')}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-[10px] text-gray-500 italic text-center py-2">{s.noHistory || "No hay actividad reciente"}</p>
+                  )}
+                </div>
+              </details>
+            </div>
+
+            {/* ITEM 6: Training Gallery Setup */}
+            <div className="w-full">
+              <TrainingGallery regenmonId={data._id as string} />
+            </div>
+          </>
+        )}
+
+        {/* Tab content logic for Social */}
+        {activeTab === 'social' && (
+          <RegisterHub data={data} playerName={userSettings?.playerName || 'Trainer'} />
+        )}
 
         {/* Evolution Overlay */}
         {showEvolutionOverlay && (
