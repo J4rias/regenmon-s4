@@ -7,6 +7,7 @@ export function useHubSync({
     trainingHistory,
     sprite,
     stage,
+    balance,
     onSyncSuccess,
 }: {
     stats: any;
@@ -14,16 +15,29 @@ export function useHubSync({
     trainingHistory: any[];
     sprite?: string;
     stage?: number;
+    balance?: number;
     onSyncSuccess?: (hubData: any) => void;
 }) {
     const { syncStats } = useHub();
     const lastSyncRef = useRef<number>(0);
 
-    const latestData = useRef({ stats, totalPoints, trainingHistory, sprite, stage, onSyncSuccess });
+    // Use individual refs to avoid stale closure issues in useCallback
+    const statsRef = useRef(stats);
+    const totalPointsRef = useRef(totalPoints);
+    const trainingHistoryRef = useRef(trainingHistory);
+    const spriteRef = useRef(sprite);
+    const stageRef = useRef(stage);
+    const balanceRef = useRef(balance);
+    const onSyncSuccessRef = useRef(onSyncSuccess);
 
-    useEffect(() => {
-        latestData.current = { stats, totalPoints, trainingHistory, sprite, stage, onSyncSuccess };
-    }, [stats, totalPoints, trainingHistory, sprite, stage, onSyncSuccess]);
+    // Keep refs in sync every render - no useEffect needed, refs are always current
+    statsRef.current = stats;
+    totalPointsRef.current = totalPoints;
+    trainingHistoryRef.current = trainingHistory;
+    spriteRef.current = sprite;
+    stageRef.current = stage;
+    balanceRef.current = balance;
+    onSyncSuccessRef.current = onSyncSuccess;
 
     const triggerSync = useCallback(async () => {
         const isRegistered = localStorage.getItem('isRegisteredInHub') === 'true';
@@ -33,35 +47,43 @@ export function useHubSync({
             return;
         }
 
-        // Debounce to prevent multiple rapid syncs
+        // Debounce to prevent multiple rapid syncs (2 seconds to allow balance chain updates)
         const now = Date.now();
-        if (now - lastSyncRef.current < 5000) {
+        if (now - lastSyncRef.current < 2000) {
             return;
         }
 
         lastSyncRef.current = now;
 
-        const { stats, totalPoints, trainingHistory, sprite, stage, onSyncSuccess } = latestData.current;
+        // Read from individual refs to get the very latest values
+        const currentBalance = typeof balanceRef.current === 'number'
+            ? balanceRef.current
+            : Number(balanceRef.current) || 0;
+
+        console.log('[HubSync] Syncing balance:', currentBalance, 'totalPoints:', totalPointsRef.current);
 
         try {
             const response = await syncStats({
                 regenmonId: hubRegenmonId,
-                stats,
-                totalPoints,
-                trainingHistory,
-                sprite,
-                stage,
+                stats: statsRef.current,
+                totalPoints: totalPointsRef.current,
+                trainingHistory: trainingHistoryRef.current,
+                sprite: spriteRef.current,
+                stage: stageRef.current,
+                balance: currentBalance,
+                coins: currentBalance,
             });
 
             if (response && response.data) {
-                if (onSyncSuccess) {
-                    onSyncSuccess(response.data);
+                if (onSyncSuccessRef.current) {
+                    onSyncSuccessRef.current(response.data);
                 }
             }
         } catch (error) {
             console.error('Error auto-syncing with HUB:', error);
-            // Fail silently for background syncs as per requirements
         }
+        // syncStats is stable from useHub, no other deps needed since we use refs
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [syncStats]);
 
     // Passive 5-minute interval sync

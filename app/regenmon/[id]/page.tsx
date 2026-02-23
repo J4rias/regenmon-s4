@@ -12,7 +12,7 @@ export default function PublicProfilePage() {
     const params = useParams();
     const id = params.id as string;
     const router = useRouter();
-    const { getProfile, getMessages, isLoading } = useHub();
+    const { getProfile, getMessages, isLoading, visit } = useHub();
 
     const [profile, setProfile] = useState<any>(null);
     const [messages, setMessages] = useState<any[]>([]);
@@ -153,7 +153,21 @@ export default function PublicProfilePage() {
                 <div className="nes-container is-rounded is-dark flex flex-col items-center p-6">
                     <div className="flex flex-col items-center text-center">
                         <h1 className="text-2xl text-yellow-400 mb-2">{profile?.name}</h1>
-                        <p className="text-[10px] sm:text-xs text-gray-400 mb-6">Owner: {profile?.ownerName}</p>
+                        <p className="text-[10px] sm:text-xs text-gray-400 mb-4">Owner: {profile?.ownerName}</p>
+
+                        {profile?.appUrl && (
+                            <a
+                                href={profile.appUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={() => {
+                                    visit(id).catch(console.error);
+                                }}
+                                className="nes-btn is-primary text-[10px] mb-6"
+                            >
+                                🎮 Visit Student App →
+                            </a>
+                        )}
 
                         <div className="bg-gray-900 p-8 rounded-lg mb-6 shadow-lg inline-block relative border border-gray-700">
                             {profile?.sprite ? (

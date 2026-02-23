@@ -43,14 +43,14 @@ export function useHub() {
         }
     }, []);
 
-    const register = useCallback((data: { name: string; ownerName: string; ownerEmail?: string; appUrl: string; sprite: string }) => {
+    const register = useCallback((data: { name: string; ownerName: string; ownerEmail?: string; appUrl: string; sprite: string; balance?: number; coins?: number }) => {
         return request('/register', {
             method: 'POST',
             body: JSON.stringify(data),
         });
     }, [request]);
 
-    const syncStats = useCallback((data: { regenmonId: string; stats: any; totalPoints: number; trainingHistory: any[]; sprite?: string; stage?: number }) => {
+    const syncStats = useCallback((data: { regenmonId: string; stats: any; totalPoints: number; trainingHistory: any[]; sprite?: string; stage?: number; balance?: number; coins?: number }) => {
         return request('/sync', {
             method: 'POST',
             body: JSON.stringify(data),
@@ -94,6 +94,12 @@ export function useHub() {
         return request(`/regenmon/${id}/activity?limit=${limit}`);
     }, [request]);
 
+    const visit = useCallback((id: string) => {
+        return request(`/regenmon/${id}/visit`, {
+            method: 'POST',
+        });
+    }, [request]);
+
     return {
         isLoading,
         register,
@@ -105,5 +111,6 @@ export function useHub() {
         getMessages,
         sendMessage,
         getActivity,
+        visit,
     };
 }

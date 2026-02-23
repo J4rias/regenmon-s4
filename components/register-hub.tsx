@@ -45,9 +45,12 @@ export function RegisterHub({ data, playerName }: RegisterHubProps) {
         e.preventDefault();
         setError(null);
 
-        const appUrl = window.location.origin;
-        // Prefix with origin to make it an absolute URL for the HUB
-        const spriteUrl = window.location.origin + currentSprite;
+        // Specific canonical URL provided by user
+        const appUrl = 'https://v0-regenmon-s4.vercel.app/';
+        // Use the same base for the sprite so it's accessible globally
+        const spriteUrl = appUrl.replace(/\/$/, '') + currentSprite;
+
+        const coinsValue = typeof data.coins === 'number' ? data.coins : Number(data.coins) || 0;
 
         try {
             const response = await register({
@@ -56,6 +59,8 @@ export function RegisterHub({ data, playerName }: RegisterHubProps) {
                 ownerEmail: email || undefined,
                 appUrl,
                 sprite: spriteUrl,
+                balance: coinsValue,
+                coins: coinsValue,
             });
 
             if (response && response.data && response.data.id) {

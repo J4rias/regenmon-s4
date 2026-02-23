@@ -109,7 +109,8 @@ export function Dashboard({ locale, data, onUpdate, onReset, userSettings, onTut
 
   const isSad = data.stats.happiness < 20 || data.stats.energy < 20 || data.stats.hunger < 20
   const currentSprite = (sprites[stage] && sprites[stage][isSad ? 'sad' : 'happy']) ? sprites[stage][isSad ? 'sad' : 'happy'] : sprites.baby.happy
-  const spriteAbsoluteUrl = typeof window !== 'undefined' ? `${window.location.origin}${currentSprite}` : currentSprite
+  const canonicalUrl = 'https://v0-regenmon-s4.vercel.app/';
+  const spriteAbsoluteUrl = canonicalUrl.replace(/\/$/, '') + currentSprite;
 
   const { triggerSync } = useHubSync({
     stats: data.stats,
@@ -117,6 +118,7 @@ export function Dashboard({ locale, data, onUpdate, onReset, userSettings, onTut
     trainingHistory: data.trainingHistory || [],
     sprite: spriteAbsoluteUrl,
     stage: data.evolutionStage || 1,
+    balance: data.coins,
   })
 
   // Update refs when data changes
@@ -725,7 +727,11 @@ export function Dashboard({ locale, data, onUpdate, onReset, userSettings, onTut
           <button
             type="button"
             className={`nes-btn text-xs sm:text-sm px-4 py-2 ${activeTab === 'social' ? 'is-primary' : 'bg-gray-800 text-gray-400'}`}
-            onClick={() => setActiveTab('social')}
+            onClick={() => {
+              setActiveTab('social');
+              // Force sync stats immediately when entering the social/hub area
+              triggerSync();
+            }}
           >
             Social
           </button>
