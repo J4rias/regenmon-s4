@@ -2,6 +2,8 @@
 
 import { useState, useRef } from "react";
 import Image from "next/image";
+import { useLocaleContext } from "@/contexts/locale-context";
+import { t } from "@/lib/i18n";
 
 interface TrainingPanelProps {
     onEvaluate: (imageBase64: string, category: string) => Promise<void>;
@@ -10,13 +12,15 @@ interface TrainingPanelProps {
 }
 
 const CATEGORIES = [
-    { id: "Código", icon: "💻", label: "Tu mejor código" },
-    { id: "Diseño", icon: "🎨", label: "UI/UX o gráfico" },
-    { id: "Proyecto", icon: "🚀", label: "Proyecto completo" },
-    { id: "Aprendizaje", icon: "📚", label: "Notas o ejercicios" },
+    { id: "Código", icon: "💻", labelKey: "trainingBestCode" },
+    { id: "Diseño", icon: "🎨", labelKey: "trainingDesign" },
+    { id: "Proyecto", icon: "🚀", labelKey: "trainingProject" },
+    { id: "Aprendizaje", icon: "📚", labelKey: "trainingLearning" },
 ];
 
 export function TrainingPanel({ onEvaluate, onCancel, isEvaluating }: TrainingPanelProps) {
+    const { locale } = useLocaleContext();
+    const s = t(locale);
     const [selectedCategory, setSelectedCategory] = useState<string>("Código");
     const [previewImage, setPreviewImage] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -28,7 +32,7 @@ export function TrainingPanel({ onEvaluate, onCancel, isEvaluating }: TrainingPa
 
         // Validar tamaño (5MB)
         if (file.size > 5 * 1024 * 1024) {
-            setError("❌ El archivo es demasiado grande. Máximo 5MB.");
+            setError(s.trainingFileTooLarge);
             return;
         }
 
@@ -48,11 +52,11 @@ export function TrainingPanel({ onEvaluate, onCancel, isEvaluating }: TrainingPa
 
     return (
         <div className="nes-container with-title is-centered p-4">
-            <p className="title">🎓 Entrenar Regenmon</p>
+            <p className="title">🎓 {s.trainingTitle}</p>
 
             {!previewImage ? (
                 <>
-                    <p className="mb-4">Elige una categoría y sube tu captura:</p>
+                    <p className="mb-4">{s.trainingChooseCategory}</p>
 
                     <div className="grid grid-cols-2 gap-2 mb-6">
                         {CATEGORIES.map((cat) => (
@@ -64,7 +68,7 @@ export function TrainingPanel({ onEvaluate, onCancel, isEvaluating }: TrainingPa
                                 onClick={() => setSelectedCategory(cat.id)}
                             >
                                 <span className="block text-xl mb-1">{cat.icon}</span>
-                                {cat.label}
+                                {s[cat.labelKey as keyof typeof s]}
                             </button>
                         ))}
                     </div>
@@ -75,7 +79,7 @@ export function TrainingPanel({ onEvaluate, onCancel, isEvaluating }: TrainingPa
                             className="nes-btn is-primary mb-2"
                             onClick={() => fileInputRef.current?.click()}
                         >
-                            📸 Subir Captura
+                            📸 {s.trainingUploadButton}
                         </button>
                         <input
                             type="file"
@@ -107,11 +111,11 @@ export function TrainingPanel({ onEvaluate, onCancel, isEvaluating }: TrainingPa
                             className={`nes-btn ${isEvaluating ? "is-disabled" : "is-success"}`}
                             onClick={handleEvaluate}
                         >
-                            {isEvaluating ? "🔄 Evaluando..." : "✅ Evaluar"}
+                            {isEvaluating ? `🔄 ${s.trainingEvaluating}` : `✅ ${s.trainingEvaluateButton}`}
                         </button>
                         {!isEvaluating && (
                             <button className="nes-btn is-error" onClick={() => setPreviewImage(null)}>
-                                ❌ Cancelar
+                                ❌ {s.trainingCancelButton}
                             </button>
                         )}
                     </div>
@@ -120,7 +124,7 @@ export function TrainingPanel({ onEvaluate, onCancel, isEvaluating }: TrainingPa
 
             <div className="mt-6">
                 <button className="nes-btn is-normal w-full" onClick={onCancel}>
-                    Cerrar
+                    {s.trainingCloseButton}
                 </button>
             </div>
         </div>

@@ -4,6 +4,8 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import Image from "next/image";
 import { CeldaIcon } from "./celda-icon";
+import { useLocaleContext } from "@/contexts/locale-context";
+import { t } from "@/lib/i18n";
 
 interface TrainingGalleryProps {
     regenmonId: string;
@@ -17,13 +19,15 @@ const CATEGORY_COLORS: Record<string, { bg: string, text: string }> = {
 };
 
 export function TrainingGallery({ regenmonId }: TrainingGalleryProps) {
+    const { locale } = useLocaleContext();
+    const s = t(locale);
     // Necesitamos pasar el regenmonId casteado dinámicamente o asumiendo el tipo correcto
     const trainings = useQuery(api.training.getTrainingHistory, { regenmonId: regenmonId as any });
 
     if (trainings === undefined) {
         return (
             <div className="flex justify-center p-4">
-                <span className="animate-pulse">Cargando galería...</span>
+                <span className="animate-pulse">{s.trainingLoadingGallery}</span>
             </div>
         );
     }
@@ -31,7 +35,7 @@ export function TrainingGallery({ regenmonId }: TrainingGalleryProps) {
     if (trainings.length === 0) {
         return (
             <div className="p-4 text-center text-xs text-gray-500 italic">
-                Aún no hay entrenamientos. ¡Sube tu primer avance!
+                {s.trainingNoHistory}
             </div>
         );
     }
@@ -58,7 +62,7 @@ export function TrainingGallery({ regenmonId }: TrainingGalleryProps) {
 
                     {/* Score (Big) */}
                     <div className="text-xl sm:text-3xl font-bold mt-4 mb-2 flex flex-col items-center" style={{ color: training.score >= 80 ? '#92cc41' : (training.score >= 50 ? '#f7d51d' : '#e76e55') }}>
-                        {training.score} <span className="text-[10px] text-gray-400">PTS</span>
+                        {training.score} <span className="text-[10px] text-gray-400">{s.trainingPts}</span>
                     </div>
 
                     {/* Imagen o Placeholder */}
@@ -83,7 +87,7 @@ export function TrainingGallery({ regenmonId }: TrainingGalleryProps) {
 
                     {/* Recompensas */}
                     <div className="flex justify-between w-full mt-2 text-xs border-t border-gray-600 pt-2">
-                        <span className="text-blue-300">+{training.points} EXP</span>
+                        <span className="text-blue-300">+{training.points} {s.trainingExp}</span>
                         <span className="text-green-400 flex items-center gap-1">+{training.coins} <CeldaIcon className="w-3 h-4" /></span>
                     </div>
                 </div>
