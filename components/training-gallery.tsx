@@ -4,7 +4,7 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import Image from "next/image";
 import { CeldaIcon } from "./celda-icon";
-import { useLocaleContext } from "@/contexts/locale-context";
+import { useLanguage } from "@/components/language-provider";
 import { t } from "@/lib/i18n";
 
 interface TrainingGalleryProps {
@@ -19,7 +19,7 @@ const CATEGORY_COLORS: Record<string, { bg: string, text: string }> = {
 };
 
 export function TrainingGallery({ regenmonId }: TrainingGalleryProps) {
-    const { locale } = useLocaleContext();
+    const { locale } = useLanguage();
     const s = t(locale);
     // Necesitamos pasar el regenmonId casteado dinámicamente o asumiendo el tipo correcto
     const trainings = useQuery(api.training.getTrainingHistory, { regenmonId: regenmonId as any });

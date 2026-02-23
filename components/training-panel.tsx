@@ -2,7 +2,7 @@
 
 import { useState, useRef } from "react";
 import Image from "next/image";
-import { useLocaleContext } from "@/contexts/locale-context";
+import { useLanguage } from "@/components/language-provider";
 import { t } from "@/lib/i18n";
 
 interface TrainingPanelProps {
@@ -19,7 +19,7 @@ const CATEGORIES = [
 ];
 
 export function TrainingPanel({ onEvaluate, onCancel, isEvaluating }: TrainingPanelProps) {
-    const { locale } = useLocaleContext();
+    const { locale } = useLanguage();
     const s = t(locale);
     const [selectedCategory, setSelectedCategory] = useState<string>("Código");
     const [previewImage, setPreviewImage] = useState<string | null>(null);
